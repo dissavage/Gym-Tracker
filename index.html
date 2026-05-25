@@ -246,15 +246,58 @@
     /* HISTORY */
     .empty-state { text-align: center; color: var(--muted); margin-top: 60px; font-size: 15px; line-height: 1.6; }
     .history-card { background: var(--surf); border: 1px solid var(--border); border-radius: 14px; padding: 16px; margin-bottom: 14px; }
-    .history-card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
+    .history-card-header { display: flex; justify-content: space-between; align-items: flex-start; cursor: pointer; }
     .h-date  { font-size: 14px; font-weight: 800; }
     .h-day   { font-size: 12px; color: var(--accent); font-weight: 700; margin-top: 2px; }
+    .h-header-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
     .h-stats { font-size: 12px; color: var(--muted); text-align: right; line-height: 1.5; }
+    .h-expand-icon { font-size: 11px; color: var(--muted); padding: 2px 4px; }
+    .h-del-session-btn {
+      background: none; border: none; color: var(--muted); cursor: pointer;
+      font-size: 18px; padding: 3px 6px; border-radius: 6px; line-height: 1; transition: color .15s;
+    }
+    .h-del-session-btn:active { color: var(--red); }
+    .history-card-body { display: none; padding-top: 12px; }
+    .history-card-body.expanded { display: block; }
     .h-exercise { border-top: 1px solid var(--border); padding-top: 10px; margin-top: 10px; }
     .h-ex-name  { font-size: 13px; font-weight: 700; margin-bottom: 6px; }
-    .h-set-badges { display: flex; flex-wrap: wrap; gap: 5px; }
-    .h-set-badge { background: var(--surf2); border-radius: 6px; padding: 3px 9px; font-size: 11px; color: var(--muted); }
-    .h-set-badge.drop { color: var(--purple); }
+    .h-set-list { display: flex; flex-direction: column; gap: 2px; }
+    .h-set-row  { display: flex; align-items: center; gap: 6px; padding: 3px 0; }
+    .h-set-label { font-size: 12px; font-weight: 700; color: var(--muted); min-width: 44px; flex-shrink: 0; }
+    .h-set-label.drop { color: var(--purple); }
+    .h-set-val { font-size: 12px; font-weight: 600; flex: 1; cursor: pointer; }
+    .h-del-set-btn {
+      background: none; border: none; color: var(--muted); cursor: pointer;
+      font-size: 14px; padding: 3px 5px; border-radius: 5px; line-height: 1; transition: color .15s;
+    }
+    .h-del-set-btn:active { color: var(--red); }
+    .h-set-inputs { display: flex; align-items: center; gap: 5px; flex: 1; }
+    .h-set-input {
+      width: 58px; background: var(--bg); border: 1px solid var(--border); border-radius: 7px;
+      padding: 7px 4px; color: var(--text); font-size: 13px; font-weight: 700;
+      text-align: center; outline: none; -moz-appearance: textfield; transition: border-color .18s;
+    }
+    .h-set-input:focus { border-color: var(--accent); }
+    .h-set-input::-webkit-outer-spin-button, .h-set-input::-webkit-inner-spin-button { -webkit-appearance: none; }
+    .h-set-input::placeholder { color: var(--muted); font-size: 10px; font-weight: 400; }
+    .h-set-sep { color: var(--muted); font-size: 13px; font-weight: 600; flex-shrink: 0; }
+    .h-confirm-btn {
+      background: var(--green); border: none; color: #fff; cursor: pointer;
+      font-size: 13px; padding: 5px 10px; border-radius: 7px; font-weight: 800; transition: opacity .15s;
+    }
+    .h-confirm-btn:active { opacity: .8; }
+    .h-cancel-btn {
+      background: none; border: 1px solid var(--border); color: var(--muted); cursor: pointer;
+      font-size: 13px; padding: 5px 8px; border-radius: 7px; transition: background .15s;
+    }
+    .h-cancel-btn:active { background: var(--surf3); }
+    .h-add-set-form { display: flex; align-items: center; gap: 5px; margin-top: 8px; }
+    .h-add-set-btn {
+      font-size: 12px; font-weight: 700; color: var(--accent); background: transparent;
+      border: 1.5px dashed var(--border); border-radius: 8px; padding: 8px 12px;
+      cursor: pointer; width: 100%; margin-top: 6px; transition: background .18s, border-color .18s;
+    }
+    .h-add-set-btn:active { background: var(--accent-d); border-color: var(--accent); }
 
     /* WEIGHT */
     .weight-log-card { background: var(--surf); border: 1px solid var(--border); border-radius: 14px; padding: 18px; margin-bottom: 18px; }
@@ -702,10 +745,10 @@ function dedup(arr) {
 }
 
 const DB = {
-  'Upper A (Push)':      dedup([...CHEST, ...SHOULDERS_PUSH, ...TRICEPS]),
-  'Lower A (Quad)':      dedup([...QUADS, ...GLUTES_ABS, ...CALVES, ...ABS_CORE]),
-  'Upper B (Pull)':      dedup([...BACK, ...BICEPS, ...SHOULDERS_REAR]),
-  'Lower B (Hamstring)': dedup([...HAMSTRINGS, ...GLUTES_ABS, ...CALVES, ...ABS_CORE]),
+  'Upper A (Push)':      dedup([...CHEST, ...SHOULDERS_PUSH, ...TRICEPS, ...BACK, ...BICEPS, ...SHOULDERS_REAR, ...TRAPS, ...FOREARMS]),
+  'Lower A (Quad)':      dedup([...QUADS, ...HAMSTRINGS, ...GLUTES_ABS, ...CALVES, ...ABS_CORE]),
+  'Upper B (Pull)':      dedup([...BACK, ...BICEPS, ...SHOULDERS_REAR, ...CHEST, ...SHOULDERS_PUSH, ...TRICEPS, ...TRAPS, ...FOREARMS]),
+  'Lower B (Hamstring)': dedup([...HAMSTRINGS, ...QUADS, ...GLUTES_ABS, ...CALVES, ...ABS_CORE]),
   'Arm Day':             dedup([...BICEPS, ...TRICEPS, ...TRAPS, ...FOREARMS]),
 };
 
@@ -748,6 +791,9 @@ const store = {
 let session = null;
 let progressCurrentMG = null;
 let progressCurrentEx = null;
+let historyCollapsedSessions = new Set();
+let historyEditTarget = null;
+let historyAddSetTarget = null;
 
 /* ════════════════════════════════════
    SCREEN HELPERS
@@ -1085,10 +1131,9 @@ document.getElementById('workout-exercises').addEventListener('click', e => {
   // Add set
   const addSetBtn = e.target.closest('.add-set-btn');
   if (addSetBtn) {
-    const idx  = parseInt(addSetBtn.dataset.exIdx);
-    const ex   = session.exercises[idx];
-    const last = ex.sets[ex.sets.length - 1] || { weight: '', reps: '' };
-    ex.sets.push({ weight: last.weight, reps: last.reps });
+    const idx = parseInt(addSetBtn.dataset.exIdx);
+    const ex  = session.exercises[idx];
+    ex.sets.push({ weight: '', reps: '' });
     store.saveDraft(session);
     renderExerciseCard(idx);
     setTimeout(() => {
@@ -1171,35 +1216,195 @@ function renderHistory() {
     el.innerHTML = `<div class="empty-state">No workouts yet.<br>Hit Track to log your first session!</div>`;
     return;
   }
-  el.innerHTML = [...sessions].reverse().map(sess => {
+  const displayed = sessions.map((sess, origIdx) => ({ sess, origIdx })).reverse();
+  el.innerHTML = displayed.map(({ sess, origIdx }) => {
     const d  = new Date(sess.date);
     const ds = d.toLocaleDateString('en-US', { weekday:'long', month:'short', day:'numeric' });
-    const totalSets = sess.exercises.reduce((a,ex) => a + ex.sets.length, 0);
+    const totalSets = sess.exercises.reduce((a, ex) => a + ex.sets.length, 0);
+    const isExpanded = !historyCollapsedSessions.has(sess.date);
+
+    const exercisesHtml = sess.exercises.map((ex, exIdx) => {
+      let rc = 0;
+      const setsHtml = ex.sets.map((s, setIdx) => {
+        const isDrop = s.isDropSet;
+        if (!isDrop) rc++;
+        const label  = isDrop ? 'Drop' : `Set ${rc}`;
+        const lblCls = isDrop ? 'h-set-label drop' : 'h-set-label';
+        const isEditing = historyEditTarget &&
+          historyEditTarget.sessIdx === origIdx &&
+          historyEditTarget.exIdx   === exIdx &&
+          historyEditTarget.setIdx  === setIdx;
+        if (isEditing) {
+          return `
+            <div class="h-set-row">
+              <span class="${lblCls}">${label}</span>
+              <div class="h-set-inputs">
+                <input type="number" class="h-set-input h-edit-weight" value="${escHtml(String(s.weight))}" placeholder="lbs" min="0" step="2.5" inputmode="decimal">
+                <span class="h-set-sep">&#215;</span>
+                <input type="number" class="h-set-input h-edit-reps" value="${escHtml(String(s.reps))}" placeholder="reps" min="0" step="1" inputmode="numeric">
+              </div>
+              <button class="h-confirm-btn h-confirm-edit-btn" data-sess-idx="${origIdx}" data-ex-idx="${exIdx}" data-set-idx="${setIdx}">&#10003;</button>
+              <button class="h-cancel-btn h-cancel-edit-btn" data-sess-idx="${origIdx}" data-ex-idx="${exIdx}" data-set-idx="${setIdx}">&#10005;</button>
+            </div>`;
+        }
+        return `
+          <div class="h-set-row">
+            <span class="${lblCls}">${label}</span>
+            <span class="h-set-val" data-sess-idx="${origIdx}" data-ex-idx="${exIdx}" data-set-idx="${setIdx}">${s.weight}lbs &#215; ${s.reps}</span>
+            <button class="h-del-set-btn" data-sess-idx="${origIdx}" data-ex-idx="${exIdx}" data-set-idx="${setIdx}">&#10005;</button>
+          </div>`;
+      }).join('');
+
+      const isAddingSet = historyAddSetTarget &&
+        historyAddSetTarget.sessIdx === origIdx &&
+        historyAddSetTarget.exIdx   === exIdx;
+      const addRowHtml = isAddingSet
+        ? `<div class="h-add-set-form">
+            <input type="number" class="h-set-input h-new-weight" placeholder="lbs" min="0" step="2.5" inputmode="decimal">
+            <span class="h-set-sep">&#215;</span>
+            <input type="number" class="h-set-input h-new-reps" placeholder="reps" min="0" step="1" inputmode="numeric">
+            <button class="h-confirm-btn h-confirm-add-btn" data-sess-idx="${origIdx}" data-ex-idx="${exIdx}">&#10003;</button>
+            <button class="h-cancel-btn h-cancel-add-btn" data-sess-idx="${origIdx}" data-ex-idx="${exIdx}">&#10005;</button>
+          </div>`
+        : `<button class="h-add-set-btn" data-sess-idx="${origIdx}" data-ex-idx="${exIdx}">+ Add Set</button>`;
+
+      return `
+        <div class="h-exercise">
+          <div class="h-ex-name">${escHtml(ex.name)}</div>
+          <div class="h-set-list">${setsHtml}</div>
+          ${addRowHtml}
+        </div>`;
+    }).join('');
+
     return `
       <div class="history-card">
-        <div class="history-card-header">
+        <div class="history-card-header" data-sess-date="${escHtml(sess.date)}">
           <div>
             <div class="h-date">${ds}</div>
             <div class="h-day">${escHtml(sess.dayType)}</div>
           </div>
-          <div class="h-stats">${sess.exercises.length} exercise${sess.exercises.length !== 1 ? 's' : ''}<br>${totalSets} set${totalSets !== 1 ? 's' : ''}</div>
+          <div class="h-header-right">
+            <div class="h-stats">${sess.exercises.length} exercise${sess.exercises.length !== 1 ? 's' : ''}<br>${totalSets} set${totalSets !== 1 ? 's' : ''}</div>
+            <span class="h-expand-icon">${isExpanded ? '&#9650;' : '&#9660;'}</span>
+            <button class="h-del-session-btn" data-sess-idx="${origIdx}">&#128465;</button>
+          </div>
         </div>
-        ${sess.exercises.map(ex => {
-          let rc = 0;
-          const badges = ex.sets.map(s => {
-            if (!s.isDropSet) rc++;
-            const lbl = s.isDropSet ? 'Drop' : `Set ${rc}`;
-            return `<span class="h-set-badge${s.isDropSet ? ' drop' : ''}">${lbl}: ${s.weight}lbs &#215; ${s.reps}</span>`;
-          }).join('');
-          return `
-            <div class="h-exercise">
-              <div class="h-ex-name">${escHtml(ex.name)}</div>
-              <div class="h-set-badges">${badges}</div>
-            </div>`;
-        }).join('')}
+        <div class="history-card-body${isExpanded ? ' expanded' : ''}">
+          ${exercisesHtml}
+        </div>
       </div>`;
   }).join('');
 }
+
+document.getElementById('history-list').addEventListener('click', e => {
+  const header = e.target.closest('.history-card-header');
+  if (header && !e.target.closest('.h-del-session-btn')) {
+    const date = header.dataset.sessDate;
+    if (historyCollapsedSessions.has(date)) {
+      historyCollapsedSessions.delete(date);
+    } else {
+      historyCollapsedSessions.add(date);
+    }
+    renderHistory();
+    return;
+  }
+  const delSessionBtn = e.target.closest('.h-del-session-btn');
+  if (delSessionBtn) {
+    if (!confirm('Delete this entire workout?')) return;
+    const idx = parseInt(delSessionBtn.dataset.sessIdx);
+    const sessions = store.getSessions();
+    sessions.splice(idx, 1);
+    store.saveSessions(sessions);
+    historyEditTarget = null;
+    historyAddSetTarget = null;
+    renderHistory();
+    return;
+  }
+  const delSetBtn = e.target.closest('.h-del-set-btn');
+  if (delSetBtn) {
+    const sessIdx = parseInt(delSetBtn.dataset.sessIdx);
+    const exIdx   = parseInt(delSetBtn.dataset.exIdx);
+    const setIdx  = parseInt(delSetBtn.dataset.setIdx);
+    const sessions = store.getSessions();
+    sessions[sessIdx].exercises[exIdx].sets.splice(setIdx, 1);
+    if (sessions[sessIdx].exercises[exIdx].sets.length === 0) {
+      sessions[sessIdx].exercises.splice(exIdx, 1);
+    }
+    if (sessions[sessIdx].exercises.length === 0) {
+      sessions.splice(sessIdx, 1);
+    }
+    store.saveSessions(sessions);
+    historyEditTarget = null;
+    renderHistory();
+    return;
+  }
+  const setVal = e.target.closest('.h-set-val');
+  if (setVal) {
+    historyEditTarget = {
+      sessIdx: parseInt(setVal.dataset.sessIdx),
+      exIdx:   parseInt(setVal.dataset.exIdx),
+      setIdx:  parseInt(setVal.dataset.setIdx),
+    };
+    historyAddSetTarget = null;
+    renderHistory();
+    return;
+  }
+  const confirmEditBtn = e.target.closest('.h-confirm-edit-btn');
+  if (confirmEditBtn) {
+    const sessIdx = parseInt(confirmEditBtn.dataset.sessIdx);
+    const exIdx   = parseInt(confirmEditBtn.dataset.exIdx);
+    const setIdx  = parseInt(confirmEditBtn.dataset.setIdx);
+    const row    = e.target.closest('.h-set-row');
+    const weight = row.querySelector('.h-edit-weight')?.value;
+    const reps   = row.querySelector('.h-edit-reps')?.value;
+    if (!weight || !reps) { toast('Enter weight and reps', false); return; }
+    const sessions = store.getSessions();
+    sessions[sessIdx].exercises[exIdx].sets[setIdx].weight = parseFloat(weight);
+    sessions[sessIdx].exercises[exIdx].sets[setIdx].reps   = parseInt(reps);
+    store.saveSessions(sessions);
+    historyEditTarget = null;
+    renderHistory();
+    return;
+  }
+  const cancelEditBtn = e.target.closest('.h-cancel-edit-btn');
+  if (cancelEditBtn) {
+    historyEditTarget = null;
+    renderHistory();
+    return;
+  }
+  const addSetBtn = e.target.closest('.h-add-set-btn');
+  if (addSetBtn) {
+    historyAddSetTarget = {
+      sessIdx: parseInt(addSetBtn.dataset.sessIdx),
+      exIdx:   parseInt(addSetBtn.dataset.exIdx),
+    };
+    historyEditTarget = null;
+    renderHistory();
+    setTimeout(() => document.querySelector('.h-new-weight')?.focus(), 40);
+    return;
+  }
+  const confirmAddBtn = e.target.closest('.h-confirm-add-btn');
+  if (confirmAddBtn) {
+    const sessIdx = parseInt(confirmAddBtn.dataset.sessIdx);
+    const exIdx   = parseInt(confirmAddBtn.dataset.exIdx);
+    const form   = e.target.closest('.h-add-set-form');
+    const weight = form.querySelector('.h-new-weight')?.value;
+    const reps   = form.querySelector('.h-new-reps')?.value;
+    if (!weight || !reps) { toast('Enter weight and reps', false); return; }
+    const sessions = store.getSessions();
+    sessions[sessIdx].exercises[exIdx].sets.push({ weight: parseFloat(weight), reps: parseInt(reps), isDropSet: false });
+    store.saveSessions(sessions);
+    historyAddSetTarget = null;
+    renderHistory();
+    return;
+  }
+  const cancelAddBtn = e.target.closest('.h-cancel-add-btn');
+  if (cancelAddBtn) {
+    historyAddSetTarget = null;
+    renderHistory();
+    return;
+  }
+});
 
 /* ════════════════════════════════════
    WEIGHT TRACKER
