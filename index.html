@@ -207,6 +207,7 @@
     .set-input:focus { border-color: var(--accent); }
     .set-input::placeholder { color: var(--muted); font-size: 11px; font-weight: 400; }
     .set-sep { color: var(--muted); font-size: 14px; font-weight: 600; flex-shrink: 0; }
+    .drop-set-row { margin-left: 16px; border-left: 2px solid rgba(192,132,252,.45); padding-left: 10px; }
     .del-set-btn {
       background: none; border: none; color: var(--muted); cursor: pointer;
       font-size: 16px; padding: 4px 6px; border-radius: 6px; transition: color .15s; line-height: 1; flex-shrink: 0;
@@ -348,7 +349,7 @@
       background: var(--surf); border: 1px solid var(--border); border-radius: 10px;
       padding: 12px 14px; color: var(--text); font-size: 15px; outline: none; color-scheme: dark;
     }
-    .pw-date-wrap { overflow: hidden; width: 100%; }
+    .pw-date-wrap { overflow: hidden; width: 100%; border-radius: 10px; }
     .pw-day-btns { display: flex; flex-wrap: wrap; gap: 8px; }
     .pw-day-btn {
       padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border);
@@ -1140,9 +1141,8 @@ function buildExCardHtml(ex, idx) {
     if (!s.isDropSet) regCount++;
     const label    = s.isDropSet ? 'Drop' : `Set ${regCount}`;
     const numClass = s.isDropSet ? 'set-num drop-label' : 'set-num';
-    const isLast   = sIdx === ex.sets.length - 1;
     return `
-      <div class="set-row" data-set-idx="${sIdx}">
+      <div class="set-row${s.isDropSet ? ' drop-set-row' : ''}" data-set-idx="${sIdx}">
         <span class="${numClass}">${label}</span>
         <div class="set-inputs">
           <input type="number" class="set-input" data-field="weight" data-ex-idx="${idx}" data-set-idx="${sIdx}"
@@ -1152,7 +1152,6 @@ function buildExCardHtml(ex, idx) {
             placeholder="reps" min="0" step="1" value="${escHtml(String(s.reps))}" inputmode="numeric" autocomplete="off">
         </div>
         ${ex.sets.length > 1 ? `<button class="del-set-btn" data-ex-idx="${idx}" data-set-idx="${sIdx}">&#10005;</button>` : ''}
-        ${isLast ? `<button class="add-drop-btn" data-ex-idx="${idx}" style="margin-top:0;flex-shrink:0">+ Drop</button>` : ''}
       </div>`;
   }).join('');
 
@@ -1173,6 +1172,7 @@ function buildExCardHtml(ex, idx) {
         ${lastPerfHtml}
         <div class="section-label">Sets</div>
         <div class="sets-list" id="sets-list-${idx}">${setsHtml}</div>
+        <button class="add-drop-btn" data-ex-idx="${idx}">+ Drop Set</button>
         <button class="add-set-btn" data-ex-idx="${idx}">+ Add Set</button>
       </div>
     </div>`;
