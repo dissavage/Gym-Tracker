@@ -220,10 +220,10 @@
     }
     .add-set-btn:active { background: var(--accent-d); border-color: var(--accent); }
     .add-drop-btn {
-      width: 100%; padding: 9px; background: transparent;
-      border: 1.5px dashed rgba(192,132,252,.4); border-radius: 10px;
-      color: var(--purple); font-size: 12px; font-weight: 700;
-      cursor: pointer; margin-top: 4px; transition: background .18s, border-color .18s;
+      font-size: 11px; font-weight: 700; color: var(--purple); background: transparent;
+      border: 1.5px dashed rgba(192,132,252,.4); border-radius: 6px; padding: 5px 10px;
+      cursor: pointer; margin-top: 6px; display: inline-block;
+      transition: background .18s, border-color .18s;
     }
     .add-drop-btn:active { background: rgba(192,132,252,.12); border-color: var(--purple); }
 
@@ -258,6 +258,14 @@
       letter-spacing: .2px; transition: opacity .15s; flex-shrink: 0;
     }
     .h-del-session-btn:active { opacity: .8; }
+    .h-add-ex-btn {
+      background: var(--surf2); border: 1px solid var(--border); color: var(--accent);
+      cursor: pointer; font-size: 11px; font-weight: 800; padding: 5px 10px;
+      border-radius: 7px; white-space: nowrap; transition: background .15s; flex-shrink: 0;
+    }
+    .h-add-ex-btn:active { background: var(--surf3); }
+    .h-add-ex-search { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--border); }
+    .h-del-session-wrap { display: flex; justify-content: flex-end; margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--border); }
     .history-card-body { display: none; padding-top: 12px; }
     .history-card-body.expanded { display: block; }
     .h-exercise { border-top: 1px solid var(--border); padding-top: 10px; margin-top: 10px; }
@@ -331,12 +339,12 @@
       width: 30px; height: 30px; border-radius: 99px; cursor: pointer;
       font-size: 13px; display: flex; align-items: center; justify-content: center;
     }
-    .modal-body { flex: 1; overflow-y: auto; padding: 16px; }
+    .modal-body { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 16px; }
     .modal-body::-webkit-scrollbar { display: none; }
     .modal-footer { padding: 12px 16px 24px; flex-shrink: 0; border-top: 1px solid var(--border); }
     .pw-section { margin-bottom: 18px; }
     .pw-date-input {
-      width: 100%; background: var(--surf); border: 1px solid var(--border); border-radius: 10px;
+      width: 100%; min-width: 0; background: var(--surf); border: 1px solid var(--border); border-radius: 10px;
       padding: 12px 14px; color: var(--text); font-size: 15px; outline: none; color-scheme: dark;
     }
     .pw-day-btns { display: flex; flex-wrap: wrap; gap: 8px; }
@@ -536,7 +544,7 @@
           <div class="stat-card"><div class="stat-label">Current</div><div class="stat-val" id="stat-current">&#8212;</div><div class="stat-sub">lbs</div></div>
           <div class="stat-card"><div class="stat-label">Starting</div><div class="stat-val" id="stat-starting">&#8212;</div><div class="stat-sub">lbs</div></div>
           <div class="stat-card"><div class="stat-label">Total Change</div><div class="stat-val" id="stat-change">&#8212;</div><div class="stat-sub">lbs</div></div>
-          <div class="stat-card"><div class="stat-label">7-Day Avg</div><div class="stat-val" id="stat-avg">&#8212;</div><div class="stat-sub">lbs</div></div>
+          <div class="stat-card"><div class="stat-label">7-Day Change</div><div class="stat-val" id="stat-avg">&#8212;</div><div class="stat-sub">lbs</div></div>
         </div>
       </div>
       <div id="weight-graph-wrap" style="display:none">
@@ -896,6 +904,7 @@ let progressCurrentEx = null;
 let historyExpandedSessions = new Set();
 let historyEditTarget = null;
 let historyAddSetTarget = null;
+let historyAddExTarget = null;
 let pastWorkout = null;
 
 /* ════════════════════════════════════
@@ -1160,8 +1169,8 @@ function buildExCardHtml(ex, idx) {
         ${lastPerfHtml}
         <div class="section-label">Sets</div>
         <div class="sets-list" id="sets-list-${idx}">${setsHtml}</div>
-        <button class="add-drop-btn" data-ex-idx="${idx}">+ Drop Set</button>
         <button class="add-set-btn" data-ex-idx="${idx}">+ Add Set</button>
+        <button class="add-drop-btn" data-ex-idx="${idx}">+ Drop Set</button>
       </div>
     </div>`;
 }
@@ -1385,11 +1394,25 @@ function renderHistory() {
           <div class="h-header-right">
             <div class="h-stats">${sess.exercises.length} exercise${sess.exercises.length !== 1 ? 's' : ''}<br>${totalSets} set${totalSets !== 1 ? 's' : ''}</div>
             <span class="h-expand-icon">${isExpanded ? '&#9650;' : '&#9660;'}</span>
-            <button class="h-del-session-btn" data-sess-idx="${origIdx}">Delete</button>
+            ${isExpanded ? `<button class="h-add-ex-btn" data-sess-idx="${origIdx}">+ Add Exercise</button>` : ''}
           </div>
         </div>
         <div class="history-card-body${isExpanded ? ' expanded' : ''}">
           ${exercisesHtml}
+          ${isExpanded && historyAddExTarget && historyAddExTarget.sessIdx === origIdx ? `
+            <div class="h-add-ex-search">
+              <div class="section-label" style="margin-bottom:8px">Add Exercise</div>
+              <div class="search-wrap">
+                <span class="search-icon">&#128269;</span>
+                <input type="text" class="search-input h-ex-search-input" placeholder="Search exercises..." autocomplete="off">
+              </div>
+              <div id="h-ex-results-${origIdx}" class="search-results-box" style="display:none;margin-top:8px"></div>
+              <button class="h-cancel-btn h-cancel-add-ex" style="margin-top:8px">Cancel</button>
+            </div>` : ''}
+          ${isExpanded ? `
+            <div class="h-del-session-wrap">
+              <button class="h-del-session-btn" data-sess-idx="${origIdx}">Delete Workout</button>
+            </div>` : ''}
         </div>
       </div>`;
   }).join('');
@@ -1397,7 +1420,7 @@ function renderHistory() {
 
 document.getElementById('history-list').addEventListener('click', e => {
   const header = e.target.closest('.history-card-header');
-  if (header && !e.target.closest('.h-del-session-btn')) {
+  if (header && !e.target.closest('.h-add-ex-btn')) {
     const date = header.dataset.sessDate;
     if (historyExpandedSessions.has(date)) {
       historyExpandedSessions.delete(date);
@@ -1405,6 +1428,36 @@ document.getElementById('history-list').addEventListener('click', e => {
       historyExpandedSessions.add(date);
     }
     renderHistory();
+    return;
+  }
+  const addExBtn = e.target.closest('.h-add-ex-btn');
+  if (addExBtn) {
+    const sessIdx = parseInt(addExBtn.dataset.sessIdx);
+    historyAddExTarget = { sessIdx };
+    historyEditTarget = null;
+    historyAddSetTarget = null;
+    renderHistory();
+    setTimeout(() => document.querySelector('.h-ex-search-input')?.focus(), 60);
+    return;
+  }
+  const cancelAddEx = e.target.closest('.h-cancel-add-ex');
+  if (cancelAddEx) {
+    historyAddExTarget = null;
+    renderHistory();
+    return;
+  }
+  const addExResult = e.target.closest('.h-add-ex-result');
+  if (addExResult) {
+    const sessIdx = parseInt(addExResult.dataset.sessIdx);
+    const sessions = store.getSessions();
+    const newExIdx = sessions[sessIdx].exercises.length;
+    sessions[sessIdx].exercises.push({ name: addExResult.dataset.name, type: addExResult.dataset.type, sets: [] });
+    store.saveSessions(sessions);
+    historyAddExTarget = null;
+    historyAddSetTarget = { sessIdx, exIdx: newExIdx };
+    historyEditTarget = null;
+    renderHistory();
+    setTimeout(() => document.querySelector('.h-new-weight')?.focus(), 60);
     return;
   }
   const delSessionBtn = e.target.closest('.h-del-session-btn');
@@ -1416,6 +1469,7 @@ document.getElementById('history-list').addEventListener('click', e => {
     store.saveSessions(sessions);
     historyEditTarget = null;
     historyAddSetTarget = null;
+    historyAddExTarget = null;
     renderHistory();
     return;
   }
@@ -1499,10 +1553,40 @@ document.getElementById('history-list').addEventListener('click', e => {
   }
   const cancelAddBtn = e.target.closest('.h-cancel-add-btn');
   if (cancelAddBtn) {
+    const sessIdx = parseInt(cancelAddBtn.dataset.sessIdx);
+    const exIdx   = parseInt(cancelAddBtn.dataset.exIdx);
+    const sessions = store.getSessions();
+    if (sessions[sessIdx]?.exercises[exIdx]?.sets.length === 0) {
+      sessions[sessIdx].exercises.splice(exIdx, 1);
+      store.saveSessions(sessions);
+    }
     historyAddSetTarget = null;
     renderHistory();
     return;
   }
+});
+
+document.getElementById('history-list').addEventListener('input', e => {
+  const inp = e.target.closest('.h-ex-search-input');
+  if (!inp) return;
+  const q = inp.value.trim();
+  const sessIdx = historyAddExTarget?.sessIdx;
+  if (sessIdx === undefined) return;
+  const resultsBox = document.getElementById(`h-ex-results-${sessIdx}`);
+  if (!resultsBox) return;
+  if (!q) { resultsBox.style.display = 'none'; return; }
+  const sessions = store.getSessions();
+  const sess = sessions[sessIdx];
+  if (!sess) return;
+  const already = new Set(sess.exercises.map(ex => ex.name.toLowerCase()));
+  const all = getExercisesForDay(sess.dayType);
+  const filtered = all.filter(ex => ex.name.toLowerCase().includes(q.toLowerCase()) && !already.has(ex.name.toLowerCase())).slice(0, 10);
+  resultsBox.innerHTML = filtered.map(ex => `
+    <div class="search-result-item h-add-ex-result" data-name="${escHtml(ex.name)}" data-type="${ex.type}" data-sess-idx="${sessIdx}">
+      <span class="search-result-name">${escHtml(ex.name)}</span>
+      <span class="type-badge type-${ex.type}">${ex.type === 'compound' ? 'Compound' : 'Accessory'}</span>
+    </div>`).join('');
+  resultsBox.style.display = filtered.length > 0 ? 'block' : 'none';
 });
 
 /* ════════════════════════════════════
@@ -1751,13 +1835,21 @@ function renderWeightStats() {
   const now     = Date.now();
   const weekMs  = 7 * 24 * 60 * 60 * 1000;
   const week    = sorted.filter(e => now - new Date(e.date).getTime() <= weekMs);
-  const avg     = week.length > 0 ? +(week.reduce((s,e) => s + e.weight, 0) / week.length).toFixed(1) : current;
   document.getElementById('stat-current').textContent  = current;
   document.getElementById('stat-starting').textContent = starting;
   const changeEl = document.getElementById('stat-change');
   changeEl.textContent = (change > 0 ? '+' : '') + change;
   changeEl.className   = 'stat-val' + (change > 0 ? ' positive' : change < 0 ? ' negative' : '');
-  document.getElementById('stat-avg').textContent = avg;
+  const avgEl = document.getElementById('stat-avg');
+  const weekSrc = week.length >= 2 ? week : (sorted.length >= 2 ? sorted.slice(-2) : null);
+  if (weekSrc) {
+    const wc = +(weekSrc[weekSrc.length-1].weight - weekSrc[0].weight).toFixed(1);
+    avgEl.textContent = (wc > 0 ? '+' : '') + wc;
+    avgEl.className = 'stat-val' + (wc > 0 ? ' positive' : wc < 0 ? ' negative' : '');
+  } else {
+    avgEl.textContent = '—';
+    avgEl.className = 'stat-val';
+  }
 }
 
 function renderWeightList() {
