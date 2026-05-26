@@ -1162,7 +1162,7 @@ let pastWorkout = null;
 let dietState = { selectedFood: null, pickerWhole: 0, pickerFrac: 0, pickerUnit: 'g', searchQuery: '', mealBasket: [], modalMode: 'log' };
 
 const FRACS = [{val:0,label:'0'},{val:0.25,label:'¼'},{val:0.5,label:'½'},{val:0.75,label:'¾'}];
-const UNITS = [{val:'g',label:'g'},{val:'oz',label:'oz'},{val:'lbs',label:'lbs'}];
+const UNITS = [{val:'g',label:'g'},{val:'oz',label:'oz'},{val:'lbs',label:'lbs'},{val:'serving',label:'srv'}];
 
 /* ════════════════════════════════════
    FOOD DATABASE (per 100g values)
@@ -2589,8 +2589,9 @@ function calcMacros(food, amount, unit) {
 
 function getPickerGrams() {
   const amount = dietState.pickerWhole + dietState.pickerFrac;
-  if (dietState.pickerUnit === 'oz')  return amount * 28.35;
-  if (dietState.pickerUnit === 'lbs') return amount * 453.59;
+  if (dietState.pickerUnit === 'oz')      return amount * 28.35;
+  if (dietState.pickerUnit === 'lbs')     return amount * 453.59;
+  if (dietState.pickerUnit === 'serving') return amount * (dietState.selectedFood?.g || 100);
   return amount; // grams
 }
 
