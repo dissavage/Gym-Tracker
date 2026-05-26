@@ -521,6 +521,37 @@
     .toggle input:checked ~ .toggle-track { background: var(--accent); }
     .toggle input:checked ~ .toggle-track:before { transform: translateX(20px); }
     .settings-soon { font-size: 13px; color: var(--muted); text-align: center; padding: 20px; font-style: italic; }
+    .home-settings-btn {
+      position: absolute; top: 0; right: 0; background: var(--surf);
+      border: 1px solid var(--border); color: var(--muted);
+      width: 36px; height: 36px; border-radius: 10px; cursor: pointer;
+      font-size: 18px; display: flex; align-items: center; justify-content: center;
+      transition: background .15s;
+    }
+    .home-settings-btn:active { background: var(--surf2); }
+
+    /* ── PICKER (slot machine) ── */
+    .picker-outer { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+    .picker-wrap { flex: 1; display: flex; height: 132px; position: relative; background: var(--surf2); border-radius: 12px; overflow: hidden; }
+    .picker-top-fade { position: absolute; top: 0; left: 0; right: 0; height: 44px; background: linear-gradient(to bottom, var(--surf2) 20%, transparent); pointer-events: none; z-index: 2; }
+    .picker-bot-fade { position: absolute; bottom: 0; left: 0; right: 0; height: 44px; background: linear-gradient(to top, var(--surf2) 20%, transparent); pointer-events: none; z-index: 2; }
+    .picker-sel-line { position: absolute; left: 0; right: 0; top: 44px; height: 44px; border-top: 1px solid rgba(255,255,255,.1); border-bottom: 1px solid rgba(255,255,255,.1); pointer-events: none; z-index: 1; }
+    .picker-col { flex: 1; overflow-y: scroll; scroll-snap-type: y mandatory; -webkit-overflow-scrolling: touch; min-width: 0; }
+    .picker-col::-webkit-scrollbar { display: none; }
+    .picker-pad { height: 44px; flex-shrink: 0; }
+    .picker-item { height: 44px; display: flex; align-items: center; justify-content: center; scroll-snap-align: start; font-size: 20px; font-weight: 700; user-select: none; color: var(--text); }
+    .picker-result { width: 68px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 800; text-align: center; color: var(--accent); line-height: 1.35; }
+
+    /* ── MEAL BASKET ── */
+    .basket-wrap { background: var(--surf2); border-radius: 12px; padding: 12px 14px; margin-bottom: 12px; }
+    .basket-hdr { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .6px; color: var(--muted); margin-bottom: 8px; }
+    .basket-item { display: flex; align-items: flex-start; gap: 8px; padding: 4px 0; }
+    .basket-item-info { flex: 1; min-width: 0; }
+    .basket-item-name { font-size: 13px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .basket-item-macros { font-size: 11px; color: var(--muted); margin-top: 1px; }
+    .basket-del { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 14px; padding: 2px 4px; flex-shrink: 0; line-height: 1; transition: color .15s; }
+    .basket-del:active { color: var(--red); }
+    .basket-total { border-top: 1px solid var(--border); padding-top: 8px; margin-top: 6px; font-size: 12px; color: var(--muted); }
 
     /* TOAST */
     #toast {
@@ -541,8 +572,11 @@
   <!-- TAB: HOME -->
   <div id="tab-home" class="tab active">
     <div class="scroll-content">
-      <div id="home-greeting" class="home-greeting">Good morning</div>
-      <div class="home-greeting-sub">Here's your daily overview</div>
+      <div style="position:relative;padding-right:44px;margin-bottom:0">
+        <div id="home-greeting" class="home-greeting">Good morning</div>
+        <div class="home-greeting-sub">Here's your daily overview</div>
+        <button class="home-settings-btn" id="home-settings-btn">&#9881;</button>
+      </div>
       <div class="home-section-card">
         <div class="home-card-lbl">Today's Macros</div>
         <div class="macro-rings-grid" id="home-macro-rings"></div>
@@ -732,7 +766,7 @@
       <div class="diet-summary-card" id="diet-summary"></div>
       <div class="section-label" style="margin-bottom:10px">Today's Log</div>
       <div id="diet-log-list"></div>
-      <button class="diet-add-btn" id="diet-add-btn">+ Add Food</button>
+      <button class="diet-add-btn" id="diet-add-btn">+ Add Meal</button>
     </div>
   </div>
 
@@ -774,9 +808,6 @@
   </button>
   <button class="nav-btn" data-tab="history" id="nav-history">
     <span class="nav-icon">&#128203;</span><span>History</span>
-  </button>
-  <button class="nav-btn" data-tab="settings" id="nav-settings">
-    <span class="nav-icon">&#9881;</span><span>Settings</span>
   </button>
 </nav>
 
@@ -835,7 +866,7 @@
     </div>
     <div class="modal-body" id="food-modal-body"></div>
     <div class="modal-footer" id="food-modal-footer" style="display:none">
-      <button class="finish-btn" id="food-modal-add-btn" style="background:var(--accent)">Add Food</button>
+      <button class="finish-btn" id="food-modal-add-btn" style="background:var(--accent)">Add to Meal</button>
     </div>
   </div>
 </div>
@@ -1112,7 +1143,10 @@ let historyEditTarget = null;
 let historyAddSetTarget = null;
 let historyAddExTarget = null;
 let pastWorkout = null;
-let dietState = { selectedFood: null, amount: '1', unit: 'serving', searchQuery: '' };
+let dietState = { selectedFood: null, pickerWhole: 1, pickerFrac: 0, pickerUnit: 'g', searchQuery: '', mealBasket: [] };
+
+const FRACS = [{val:0,label:'0'},{val:0.25,label:'¼'},{val:0.5,label:'½'},{val:0.75,label:'¾'}];
+const UNITS = [{val:'g',label:'g'},{val:'oz',label:'oz'},{val:'lbs',label:'lbs'}];
 
 /* ════════════════════════════════════
    FOOD DATABASE (per 100g values)
@@ -1195,7 +1229,11 @@ document.querySelectorAll('.nav-btn').forEach(btn => {
     if (tab === 'history')  renderHistory();
     if (tab === 'weight')   renderWeightTab();
     if (tab === 'progress') renderProgressTab();
-    if (tab === 'track' && session) showScreen('screen-workout');
+    if (tab === 'track') {
+      const draft = store.getDraft();
+      if (draft && draft.exercises && draft.exercises.length > 0) showScreen('screen-workout');
+      else showScreen('screen-day');
+    }
     updateFinishBar();
   });
 });
@@ -1233,6 +1271,10 @@ function openWorkoutScreen() {
    ════════════════════════════════════ */
 document.getElementById('back-from-workout').addEventListener('click', () => {
   document.getElementById('search-results-box').style.display = 'none';
+  if (session && session.exercises.length === 0) {
+    session = null;
+    store.clearDraft();
+  }
   refreshDayCards();
   showScreen('screen-day');
   updateFinishBar();
@@ -2529,6 +2571,22 @@ function calcMacros(food, amount, unit) {
   };
 }
 
+function getPickerGrams() {
+  const amount = dietState.pickerWhole + dietState.pickerFrac;
+  if (dietState.pickerUnit === 'oz')  return amount * 28.35;
+  if (dietState.pickerUnit === 'lbs') return amount * 453.59;
+  return amount; // grams
+}
+
+function pickerResultLabel() {
+  const total = dietState.pickerWhole + dietState.pickerFrac;
+  const fracLbl = FRACS.find(f => f.val === dietState.pickerFrac)?.label || '';
+  if (total === 0) return `0 ${dietState.pickerUnit}`;
+  const wholePart = dietState.pickerWhole > 0 ? String(dietState.pickerWhole) : '';
+  const fracPart  = dietState.pickerFrac  > 0 ? fracLbl : '';
+  return `${wholePart}${fracPart} ${dietState.pickerUnit}`;
+}
+
 /* ════════════════════════════════════
    HOME TAB
    ════════════════════════════════════ */
@@ -2632,6 +2690,13 @@ function renderDietTab() {
   }
 }
 
+document.getElementById('home-settings-btn').addEventListener('click', () => {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-settings').classList.add('active');
+  renderSettingsTab();
+});
+
 document.getElementById('diet-log-list').addEventListener('click', e => {
   const btn = e.target.closest('.diet-log-del');
   if (!btn) return;
@@ -2649,7 +2714,12 @@ document.getElementById('diet-add-btn').addEventListener('click', openFoodModal)
    FOOD MODAL
    ════════════════════════════════════ */
 function openFoodModal() {
-  dietState = { selectedFood: null, amount: '1', unit: 'serving', searchQuery: '' };
+  dietState.selectedFood = null;
+  dietState.pickerWhole  = 100;
+  dietState.pickerFrac   = 0;
+  dietState.pickerUnit   = 'g';
+  dietState.searchQuery  = '';
+  dietState.mealBasket   = [];
   renderFoodModal();
   document.getElementById('food-modal').style.display = 'flex';
 }
@@ -2661,36 +2731,63 @@ function closeFoodModal() {
 function renderFoodModal() {
   const body   = document.getElementById('food-modal-body');
   const footer = document.getElementById('food-modal-footer');
-  const title  = document.getElementById('food-modal-title');
+
+  const basketHtml = dietState.mealBasket.length > 0 ? (() => {
+    const tot = dietState.mealBasket.reduce((a,e) => ({cal:a.cal+e.cal,pro:a.pro+e.pro,carb:a.carb+e.carb,fat:a.fat+e.fat}),{cal:0,pro:0,carb:0,fat:0});
+    return `<div class="basket-wrap">
+      <div class="basket-hdr">Meal (${dietState.mealBasket.length} item${dietState.mealBasket.length>1?'s':''})</div>
+      ${dietState.mealBasket.map((it,i) => `
+        <div class="basket-item">
+          <div class="basket-item-info">
+            <div class="basket-item-name">${escHtml(it.label)}</div>
+            <div class="basket-item-macros">${Math.round(it.cal)} kcal &middot; ${Math.round(it.pro)}g pro &middot; ${Math.round(it.carb)}g carb &middot; ${Math.round(it.fat)}g fat</div>
+          </div>
+          <button class="basket-del" data-basket-idx="${i}">&#10005;</button>
+        </div>`).join('')}
+      <div class="basket-total">Total: <strong>${Math.round(tot.cal)} kcal &middot; ${Math.round(tot.pro)}g pro &middot; ${Math.round(tot.carb)}g carb &middot; ${Math.round(tot.fat)}g fat</strong></div>
+    </div>`;
+  })() : '';
 
   if (dietState.selectedFood) {
     const food = dietState.selectedFood;
-    const m = calcMacros(food, dietState.amount, dietState.unit);
-    title.textContent = 'Food Details';
+    const grams = getPickerGrams();
+    const m = calcMacros(food, grams, 'g');
     footer.style.display = 'block';
+    footer.innerHTML = `<button class="finish-btn" id="food-modal-add-btn" style="background:var(--accent)">Add to Meal</button>`;
+
+    const wholeItems = Array.from({length:201},(_,i)=>i)
+      .map(n=>`<div class="picker-item">${n}</div>`).join('');
+    const fracItems  = FRACS.map(f=>`<div class="picker-item">${f.label}</div>`).join('');
+    const unitItems  = UNITS.map(u=>`<div class="picker-item">${u.label}</div>`).join('');
+
     body.innerHTML = `
-      <div class="food-sel-card">
-        <div class="food-sel-name">${escHtml(food.name)}</div>
-        <div class="food-amt-row">
-          <input type="number" class="food-amt-input" id="food-amt" value="${escHtml(dietState.amount)}"
-            min="0" step="0.5" inputmode="decimal" autocomplete="off">
-          <div class="food-unit-btns">
-            <button class="food-unit-btn${dietState.unit === 'serving' ? ' active' : ''}" data-unit="serving">Serving</button>
-            <button class="food-unit-btn${dietState.unit === 'g'       ? ' active' : ''}" data-unit="g">Grams</button>
-            <button class="food-unit-btn${dietState.unit === 'oz'      ? ' active' : ''}" data-unit="oz">Oz</button>
+      ${basketHtml}
+      <button class="h-cancel-btn" id="food-back-btn" style="margin-bottom:12px">&#8592; ${escHtml(food.name)}</button>
+      <div class="food-preview" style="margin-bottom:14px">
+        <div class="food-chip"><div class="food-chip-val" id="fp-cal">${Math.round(m.cal)}</div><div class="food-chip-lbl">Cal</div></div>
+        <div class="food-chip"><div class="food-chip-val" id="fp-pro">${Math.round(m.pro)}g</div><div class="food-chip-lbl">Protein</div></div>
+        <div class="food-chip"><div class="food-chip-val" id="fp-carb">${Math.round(m.carb)}g</div><div class="food-chip-lbl">Carbs</div></div>
+        <div class="food-chip"><div class="food-chip-val" id="fp-fat">${Math.round(m.fat)}g</div><div class="food-chip-lbl">Fat</div></div>
+      </div>
+      <div class="picker-outer">
+        <div class="picker-wrap">
+          <div class="picker-top-fade"></div>
+          <div class="picker-bot-fade"></div>
+          <div class="picker-sel-line"></div>
+          <div class="picker-col" id="pc-whole">
+            <div class="picker-pad"></div>${wholeItems}<div class="picker-pad"></div>
+          </div>
+          <div class="picker-col" id="pc-frac">
+            <div class="picker-pad"></div>${fracItems}<div class="picker-pad"></div>
+          </div>
+          <div class="picker-col" id="pc-unit">
+            <div class="picker-pad"></div>${unitItems}<div class="picker-pad"></div>
           </div>
         </div>
-        <div class="food-preview" id="food-preview">
-          <div class="food-chip"><div class="food-chip-val" id="fp-cal">${Math.round(m.cal)}</div><div class="food-chip-lbl">Cal</div></div>
-          <div class="food-chip"><div class="food-chip-val" id="fp-pro">${Math.round(m.pro)}g</div><div class="food-chip-lbl">Protein</div></div>
-          <div class="food-chip"><div class="food-chip-val" id="fp-carb">${Math.round(m.carb)}g</div><div class="food-chip-lbl">Carbs</div></div>
-          <div class="food-chip"><div class="food-chip-val" id="fp-fat">${Math.round(m.fat)}g</div><div class="food-chip-lbl">Fat</div></div>
-        </div>
-      </div>
-      <button class="h-cancel-btn" id="food-back-btn" style="margin-top:8px">&#8592; Back to search</button>`;
+        <div class="picker-result" id="picker-result">${pickerResultLabel()}</div>
+      </div>`;
+    setTimeout(initPicker, 0);
   } else {
-    title.textContent = 'Add Food';
-    footer.style.display = 'none';
     const q   = dietState.searchQuery.toLowerCase();
     const all = [...FOOD_DB, ...store.getDietCustom()];
     const filtered = q ? all.filter(f => f.name.toLowerCase().includes(q)) : all;
@@ -2701,14 +2798,22 @@ function renderFoodModal() {
       ? `<div style="color:var(--muted);font-size:13px;text-align:center;padding:20px 0">No results found</div>`
       : cats.map(cat => `
           <div class="food-cat-lbl">${escHtml(cat)}</div>
-          ${byCat[cat].map(f => {
-            const calPer = Math.round(f.cal * f.g / 100);
-            return `<div class="search-result-item" data-food="${escHtml(f.name)}">
+          ${byCat[cat].map(f => `
+            <div class="search-result-item" data-food="${escHtml(f.name)}">
               <span class="search-result-name">${escHtml(f.name)}</span>
-              <span style="font-size:11px;color:var(--muted)">${calPer} cal/serving</span>
-            </div>`;
-          }).join('')}`).join('');
+              <span style="font-size:11px;color:var(--muted)">${Math.round(f.cal*f.g/100)} cal/serving</span>
+            </div>`).join('')}`).join('');
+
+    if (dietState.mealBasket.length > 0) {
+      footer.style.display = 'block';
+      footer.innerHTML = `<button class="finish-btn" id="food-log-meal-btn" style="background:var(--green)">Log Meal (${dietState.mealBasket.length} item${dietState.mealBasket.length>1?'s':''})</button>`;
+    } else {
+      footer.style.display = 'none';
+      footer.innerHTML = '';
+    }
+
     body.innerHTML = `
+      ${basketHtml}
       <div class="search-wrap" style="margin-bottom:4px">
         <span class="search-icon">&#128269;</span>
         <input type="text" class="search-input" id="food-search" placeholder="Search food..."
@@ -2719,53 +2824,103 @@ function renderFoodModal() {
   }
 }
 
+let pickerScrollTimer;
+function initPicker() {
+  const wcol = document.getElementById('pc-whole');
+  const fcol = document.getElementById('pc-frac');
+  const ucol = document.getElementById('pc-unit');
+  if (!wcol || !fcol || !ucol) return;
+
+  wcol.scrollTop = dietState.pickerWhole * 44;
+  fcol.scrollTop = FRACS.findIndex(f => f.val === dietState.pickerFrac) * 44;
+  ucol.scrollTop = UNITS.findIndex(u => u.val === dietState.pickerUnit) * 44;
+
+  [wcol, fcol, ucol].forEach(col => {
+    col.addEventListener('scroll', () => {
+      clearTimeout(pickerScrollTimer);
+      pickerScrollTimer = setTimeout(readPickerAndUpdate, 80);
+    }, { passive: true });
+  });
+}
+
+function readPickerAndUpdate() {
+  const wcol = document.getElementById('pc-whole');
+  const fcol = document.getElementById('pc-frac');
+  const ucol = document.getElementById('pc-unit');
+  if (!wcol || !fcol || !ucol) return;
+
+  dietState.pickerWhole = Math.min(200, Math.max(0, Math.round(wcol.scrollTop / 44)));
+  dietState.pickerFrac  = FRACS[Math.min(FRACS.length-1, Math.max(0, Math.round(fcol.scrollTop / 44)))].val;
+  dietState.pickerUnit  = UNITS[Math.min(UNITS.length-1, Math.max(0, Math.round(ucol.scrollTop / 44)))].val;
+
+  const grams = getPickerGrams();
+  const m = calcMacros(dietState.selectedFood, grams, 'g');
+  const c  = document.getElementById('fp-cal');  if (c)  c.textContent  = Math.round(m.cal);
+  const p  = document.getElementById('fp-pro');  if (p)  p.textContent  = Math.round(m.pro)  + 'g';
+  const cb = document.getElementById('fp-carb'); if (cb) cb.textContent = Math.round(m.carb) + 'g';
+  const ft = document.getElementById('fp-fat');  if (ft) ft.textContent = Math.round(m.fat)  + 'g';
+  const rs = document.getElementById('picker-result'); if (rs) rs.textContent = pickerResultLabel();
+}
+
 document.getElementById('food-modal-close').addEventListener('click', closeFoodModal);
 
 document.getElementById('food-modal').addEventListener('input', e => {
   if (e.target.id === 'food-search') {
     dietState.searchQuery = e.target.value;
     renderFoodModal();
-    return;
-  }
-  if (e.target.id === 'food-amt' && dietState.selectedFood) {
-    dietState.amount = e.target.value;
-    const m = calcMacros(dietState.selectedFood, dietState.amount, dietState.unit);
-    const c = document.getElementById('fp-cal');   if (c) c.textContent = Math.round(m.cal);
-    const p = document.getElementById('fp-pro');   if (p) p.textContent = Math.round(m.pro) + 'g';
-    const cb= document.getElementById('fp-carb');  if (cb) cb.textContent = Math.round(m.carb) + 'g';
-    const ft= document.getElementById('fp-fat');   if (ft) ft.textContent = Math.round(m.fat) + 'g';
   }
 });
 
 document.getElementById('food-modal').addEventListener('click', e => {
   if (e.target === document.getElementById('food-modal')) { closeFoodModal(); return; }
+
+  // Back button from picker → search view
+  if (e.target.id === 'food-back-btn') { dietState.selectedFood = null; renderFoodModal(); return; }
+
+  // Select food from search results
   const item = e.target.closest('.search-result-item[data-food]');
   if (item) {
     const food = [...FOOD_DB, ...store.getDietCustom()].find(f => f.name === item.dataset.food);
-    if (food) { dietState.selectedFood = food; dietState.amount = '1'; dietState.unit = 'serving'; renderFoodModal(); }
+    if (food) {
+      dietState.selectedFood = food;
+      dietState.pickerWhole  = 100;
+      dietState.pickerFrac   = 0;
+      dietState.pickerUnit   = 'g';
+      renderFoodModal();
+    }
     return;
   }
-  const unitBtn = e.target.closest('.food-unit-btn');
-  if (unitBtn) {
-    dietState.unit = unitBtn.dataset.unit;
-    const m = calcMacros(dietState.selectedFood, dietState.amount, dietState.unit);
-    document.querySelectorAll('.food-unit-btn').forEach(b => b.classList.toggle('active', b.dataset.unit === dietState.unit));
-    const c = document.getElementById('fp-cal');   if (c) c.textContent = Math.round(m.cal);
-    const p = document.getElementById('fp-pro');   if (p) p.textContent = Math.round(m.pro) + 'g';
-    const cb= document.getElementById('fp-carb');  if (cb) cb.textContent = Math.round(m.carb) + 'g';
-    const ft= document.getElementById('fp-fat');   if (ft) ft.textContent = Math.round(m.fat) + 'g';
+
+  // Remove item from basket
+  const bdel = e.target.closest('.basket-del');
+  if (bdel) {
+    dietState.mealBasket.splice(parseInt(bdel.dataset.basketIdx), 1);
+    renderFoodModal();
     return;
   }
-  if (e.target.id === 'food-back-btn') { dietState.selectedFood = null; renderFoodModal(); return; }
+
+  // Add current food to meal basket
   if (e.target.id === 'food-modal-add-btn') {
-    const food = dietState.selectedFood;
-    if (!food || !dietState.amount || parseFloat(dietState.amount) <= 0) { toast('Enter a valid amount', false); return; }
-    const m = calcMacros(food, dietState.amount, dietState.unit);
+    const food  = dietState.selectedFood;
+    const grams = getPickerGrams();
+    if (!food || grams <= 0) { toast('Set a portion size first', false); return; }
+    const m = calcMacros(food, grams, 'g');
+    dietState.mealBasket.push({ label: `${food.name} (${pickerResultLabel()})`, cal: m.cal, pro: m.pro, carb: m.carb, fat: m.fat });
+    dietState.selectedFood = null;
+    renderFoodModal();
+    return;
+  }
+
+  // Log entire meal
+  if (e.target.id === 'food-log-meal-btn') {
+    if (dietState.mealBasket.length === 0) return;
     const log = store.getMacroLog();
-    log.push({ id: Date.now(), date: getTodayStr(), foodName: food.name, cal: m.cal, pro: m.pro, carb: m.carb, fat: m.fat });
+    dietState.mealBasket.forEach(it => {
+      log.push({ id: Date.now() + Math.random(), date: getTodayStr(), foodName: it.label, cal: it.cal, pro: it.pro, carb: it.carb, fat: it.fat });
+    });
     store.saveMacroLog(log);
     closeFoodModal();
-    toast('Food logged!');
+    toast('Meal logged!');
     renderDietTab();
     renderHomeTab();
     return;
@@ -2807,7 +2962,7 @@ document.getElementById('goals-save-btn').addEventListener('click', () => {
    ════════════════════════════════════ */
 function applyTabVisibility() {
   const hidden = new Set(store.getAppSettings().hiddenTabs || []);
-  ['home','track','diet','weight','progress','history','settings'].forEach(id => {
+  ['track','diet','weight','progress','history'].forEach(id => {
     const btn = document.getElementById(`nav-${id}`);
     if (btn) btn.style.display = hidden.has(id) ? 'none' : '';
   });
@@ -2816,7 +2971,6 @@ function applyTabVisibility() {
 function renderSettingsTab() {
   const hidden = new Set(store.getAppSettings().hiddenTabs || []);
   const tabs = [
-    {id:'home',     label:'Home',     sub:'Overview dashboard'},
     {id:'track',    label:'Track',    sub:'Log your workouts'},
     {id:'diet',     label:'Diet',     sub:'Macro tracker'},
     {id:'weight',   label:'Weight',   sub:'Body weight log'},
