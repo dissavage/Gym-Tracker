@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>Gym Tracker</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -23,7 +23,7 @@
     main::-webkit-scrollbar { display: none; }
 
     /* NAV */
-    nav { display: flex; background: var(--surf); border-top: 1px solid var(--border); height: var(--nav); flex-shrink: 0; }
+    nav { display: flex; background: var(--surf); border-top: 1px solid var(--border); height: calc(var(--nav) + env(safe-area-inset-bottom, 0px)); padding-bottom: env(safe-area-inset-bottom, 0px); flex-shrink: 0; }
     .nav-btn {
       flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
       gap: 3px; background: none; border: none; color: var(--muted); cursor: pointer;
@@ -230,7 +230,7 @@
 
     /* Finish bar */
     .finish-bar {
-      position: fixed; bottom: var(--nav); left: 0; right: 0;
+      position: fixed; bottom: calc(var(--nav) + env(safe-area-inset-bottom, 0px)); left: 0; right: 0;
       padding: 10px 16px 14px;
       background: linear-gradient(to bottom, transparent, var(--bg) 30%);
       z-index: 20; display: none;
@@ -539,7 +539,7 @@
     .picker-col { flex: 1; overflow-y: scroll; scroll-snap-type: y mandatory; -webkit-overflow-scrolling: touch; min-width: 0; }
     .picker-col::-webkit-scrollbar { display: none; }
     .picker-pad { height: 44px; flex-shrink: 0; }
-    .picker-item { height: 44px; display: flex; align-items: center; justify-content: center; scroll-snap-align: start; font-size: 20px; font-weight: 700; user-select: none; color: var(--text); }
+    .picker-item { height: 44px; display: flex; align-items: center; justify-content: center; scroll-snap-align: center; font-size: 20px; font-weight: 700; user-select: none; color: var(--text); }
     .picker-result { width: 68px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 800; text-align: center; color: var(--accent); line-height: 1.35; }
 
     /* ── MEAL BASKET ── */
@@ -553,9 +553,18 @@
     .basket-del:active { color: var(--red); }
     .basket-total { border-top: 1px solid var(--border); padding-top: 8px; margin-top: 6px; font-size: 12px; color: var(--muted); }
 
+    /* ── QUICK LOG ── */
+    .quick-log-item { display: flex; align-items: center; gap: 8px; background: var(--surf); border: 1px solid var(--border); border-radius: 11px; padding: 12px 14px; margin-bottom: 8px; }
+    .quick-log-tap { flex: 1; min-width: 0; cursor: pointer; }
+    .quick-log-tap:active .quick-log-name { color: var(--accent); }
+    .quick-log-name { font-size: 14px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; transition: color .15s; }
+    .quick-log-macros { font-size: 11px; color: var(--muted); margin-top: 3px; }
+    .quick-log-del { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 15px; padding: 4px 6px; flex-shrink: 0; line-height: 1; transition: color .15s; }
+    .quick-log-del:active { color: var(--red); }
+
     /* TOAST */
     #toast {
-      position: fixed; bottom: calc(var(--nav) + 14px); left: 50%;
+      position: fixed; bottom: calc(var(--nav) + env(safe-area-inset-bottom, 0px) + 14px); left: 50%;
       transform: translateX(-50%) translateY(10px);
       padding: 10px 22px; border-radius: 99px; font-size: 14px; font-weight: 700;
       color: #fff; z-index: 999; opacity: 0; pointer-events: none;
@@ -767,6 +776,11 @@
       <div class="section-label" style="margin-bottom:10px">Today's Log</div>
       <div id="diet-log-list"></div>
       <button class="diet-add-btn" id="diet-add-btn">+ Add Meal</button>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:22px;margin-bottom:10px">
+        <span class="section-label" style="margin-bottom:0">Quick Log</span>
+        <button class="goals-btn" id="quick-log-add-btn">+ Add</button>
+      </div>
+      <div id="quick-log-list"></div>
     </div>
   </div>
 
@@ -1130,6 +1144,8 @@ const store = {
   saveDietCustom(d)  { localStorage.setItem('gym_diet_custom',  JSON.stringify(d)); },
   getAppSettings()   { return JSON.parse(localStorage.getItem('gym_app_settings') || JSON.stringify({hiddenTabs:[]})); },
   saveAppSettings(d) { localStorage.setItem('gym_app_settings', JSON.stringify(d)); },
+  getQuickLog()      { return JSON.parse(localStorage.getItem('gym_quick_log')     || '[]'); },
+  saveQuickLog(d)    { localStorage.setItem('gym_quick_log',    JSON.stringify(d)); },
 };
 
 /* ════════════════════════════════════
@@ -1143,7 +1159,7 @@ let historyEditTarget = null;
 let historyAddSetTarget = null;
 let historyAddExTarget = null;
 let pastWorkout = null;
-let dietState = { selectedFood: null, pickerWhole: 1, pickerFrac: 0, pickerUnit: 'g', searchQuery: '', mealBasket: [] };
+let dietState = { selectedFood: null, pickerWhole: 0, pickerFrac: 0, pickerUnit: 'g', searchQuery: '', mealBasket: [], modalMode: 'log' };
 
 const FRACS = [{val:0,label:'0'},{val:0.25,label:'¼'},{val:0.5,label:'½'},{val:0.75,label:'¾'}];
 const UNITS = [{val:'g',label:'g'},{val:'oz',label:'oz'},{val:'lbs',label:'lbs'}];
@@ -2688,6 +2704,7 @@ function renderDietTab() {
         <button class="diet-log-del" data-id="${e.id}">&#10005;</button>
       </div>`).join('');
   }
+  renderQuickLogSection();
 }
 
 document.getElementById('home-settings-btn').addEventListener('click', () => {
@@ -2696,6 +2713,49 @@ document.getElementById('home-settings-btn').addEventListener('click', () => {
   document.getElementById('tab-settings').classList.add('active');
   renderSettingsTab();
 });
+
+function renderQuickLogSection() {
+  const items = store.getQuickLog();
+  const el = document.getElementById('quick-log-list');
+  if (!el) return;
+  if (items.length === 0) {
+    el.innerHTML = `<div style="color:var(--muted);font-size:13px;margin-bottom:16px">No shortcuts yet — tap + Add to save one</div>`;
+    return;
+  }
+  el.innerHTML = items.map(it => `
+    <div class="quick-log-item">
+      <div class="quick-log-tap" data-ql-id="${it.id}">
+        <div class="quick-log-name">${escHtml(it.name)}</div>
+        <div class="quick-log-macros">${Math.round(it.cal)} kcal &middot; ${Math.round(it.pro)}g pro &middot; ${Math.round(it.carb)}g carb &middot; ${Math.round(it.fat)}g fat</div>
+      </div>
+      <button class="quick-log-del" data-ql-id="${it.id}">&#10005;</button>
+    </div>`).join('');
+}
+
+document.getElementById('quick-log-list').addEventListener('click', e => {
+  const tap = e.target.closest('.quick-log-tap');
+  if (tap) {
+    const id = parseInt(tap.dataset.qlId);
+    const it = store.getQuickLog().find(x => x.id === id);
+    if (!it) return;
+    const log = store.getMacroLog();
+    log.push({ id: Date.now(), date: getTodayStr(), foodName: it.name, cal: it.cal, pro: it.pro, carb: it.carb, fat: it.fat });
+    store.saveMacroLog(log);
+    toast('Logged!');
+    renderDietTab();
+    renderHomeTab();
+    return;
+  }
+  const del = e.target.closest('.quick-log-del');
+  if (del) {
+    const id = parseInt(del.dataset.qlId);
+    const ql = store.getQuickLog().filter(x => x.id !== id);
+    store.saveQuickLog(ql);
+    renderQuickLogSection();
+  }
+});
+
+document.getElementById('quick-log-add-btn').addEventListener('click', () => openFoodModal('shortcut'));
 
 document.getElementById('diet-log-list').addEventListener('click', e => {
   const btn = e.target.closest('.diet-log-del');
@@ -2713,13 +2773,14 @@ document.getElementById('diet-add-btn').addEventListener('click', openFoodModal)
 /* ════════════════════════════════════
    FOOD MODAL
    ════════════════════════════════════ */
-function openFoodModal() {
+function openFoodModal(mode = 'log') {
+  dietState.modalMode    = mode;
   dietState.selectedFood = null;
-  dietState.pickerWhole  = 100;
+  dietState.pickerWhole  = 0;
   dietState.pickerFrac   = 0;
   dietState.pickerUnit   = 'g';
   dietState.searchQuery  = '';
-  dietState.mealBasket   = [];
+  if (mode === 'log') dietState.mealBasket = [];
   renderFoodModal();
   document.getElementById('food-modal').style.display = 'flex';
 }
@@ -2753,7 +2814,9 @@ function renderFoodModal() {
     const grams = getPickerGrams();
     const m = calcMacros(food, grams, 'g');
     footer.style.display = 'block';
-    footer.innerHTML = `<button class="finish-btn" id="food-modal-add-btn" style="background:var(--accent)">Add to Meal</button>`;
+    const btnLabel = dietState.modalMode === 'shortcut' ? 'Save Shortcut' : 'Add to Meal';
+    const btnColor = dietState.modalMode === 'shortcut' ? 'var(--blue)' : 'var(--accent)';
+    footer.innerHTML = `<button class="finish-btn" id="food-modal-add-btn" style="background:${btnColor}">${btnLabel}</button>`;
 
     const wholeItems = Array.from({length:201},(_,i)=>i)
       .map(n=>`<div class="picker-item">${n}</div>`).join('');
@@ -2883,7 +2946,7 @@ document.getElementById('food-modal').addEventListener('click', e => {
     const food = [...FOOD_DB, ...store.getDietCustom()].find(f => f.name === item.dataset.food);
     if (food) {
       dietState.selectedFood = food;
-      dietState.pickerWhole  = 100;
+      dietState.pickerWhole  = 0;
       dietState.pickerFrac   = 0;
       dietState.pickerUnit   = 'g';
       renderFoodModal();
@@ -2899,15 +2962,26 @@ document.getElementById('food-modal').addEventListener('click', e => {
     return;
   }
 
-  // Add current food to meal basket
+  // Add to meal basket OR save shortcut
   if (e.target.id === 'food-modal-add-btn') {
     const food  = dietState.selectedFood;
     const grams = getPickerGrams();
     if (!food || grams <= 0) { toast('Set a portion size first', false); return; }
     const m = calcMacros(food, grams, 'g');
-    dietState.mealBasket.push({ label: `${food.name} (${pickerResultLabel()})`, cal: m.cal, pro: m.pro, carb: m.carb, fat: m.fat });
-    dietState.selectedFood = null;
-    renderFoodModal();
+    const label = `${food.name} (${pickerResultLabel()})`;
+
+    if (dietState.modalMode === 'shortcut') {
+      const ql = store.getQuickLog();
+      ql.push({ id: Date.now(), name: label, cal: m.cal, pro: m.pro, carb: m.carb, fat: m.fat });
+      store.saveQuickLog(ql);
+      closeFoodModal();
+      toast('Shortcut saved!');
+      renderQuickLogSection();
+    } else {
+      dietState.mealBasket.push({ label, cal: m.cal, pro: m.pro, carb: m.carb, fat: m.fat });
+      dietState.selectedFood = null;
+      renderFoodModal();
+    }
     return;
   }
 
