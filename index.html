@@ -3098,7 +3098,7 @@ function toast(msg, ok=true) {
   applyTabVisibility();
   renderHomeTab();
   const draft = store.getDraft();
-  if (draft && draft.exercises) {
+  if (draft && draft.exercises && draft.exercises.length > 0) {
     session = draft;
     session.exercises.forEach(ex => { if (ex.expanded === undefined) ex.expanded = true; });
     refreshDayCards();
