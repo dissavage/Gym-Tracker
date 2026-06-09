@@ -572,6 +572,33 @@
     }
     #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
     .divider { height: 1px; background: var(--border); margin: 16px 0; }
+
+    /* ── SET TIMESTAMP ── */
+    .set-timestamp { font-size: 10px; color: var(--muted); white-space: nowrap; flex-shrink: 0; padding-left: 4px; }
+
+    /* ── SPLIT SETTINGS ── */
+    .split-day-row { display: flex; align-items: center; gap: 10px; padding: 13px 16px; border-bottom: 1px solid var(--border); }
+    .split-day-row:last-child { border-bottom: none; }
+    .split-day-color-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+    .split-day-info { flex: 1; min-width: 0; }
+    .split-day-name-lbl { font-size: 15px; font-weight: 600; }
+    .split-day-sub { font-size: 12px; color: var(--muted); margin-top: 1px; }
+    .split-day-actions { display: flex; gap: 6px; flex-shrink: 0; align-items: center; }
+    .split-edit-btn { background: var(--surf2); border: 1px solid var(--border); color: var(--muted); padding: 5px 10px; border-radius: 7px; cursor: pointer; font-size: 12px; font-weight: 700; transition: background .15s; }
+    .split-edit-btn:active { background: var(--surf3); color: var(--accent); }
+    .split-del-btn { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 16px; padding: 4px 6px; border-radius: 6px; line-height: 1; transition: color .15s; }
+    .split-del-btn:active { color: var(--red); }
+    .add-day-btn { width: 100%; padding: 13px; background: transparent; border: 1.5px dashed var(--border); border-radius: 10px; color: var(--accent); font-size: 13px; font-weight: 700; cursor: pointer; margin-top: 10px; transition: background .18s, border-color .18s; }
+    .add-day-btn:active { background: var(--accent-d); border-color: var(--accent); }
+    .color-swatch-row { display: flex; gap: 10px; flex-wrap: wrap; }
+    .color-swatch { width: 32px; height: 32px; border-radius: 50%; cursor: pointer; border: 3px solid transparent; transition: border-color .15s; box-sizing: border-box; }
+    .color-swatch.selected { border-color: #fff; }
+    .mg-toggle-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .mg-toggle-item { display: flex; align-items: center; gap: 8px; background: var(--surf2); border: 1px solid var(--border); border-radius: 9px; padding: 10px 12px; cursor: pointer; transition: border-color .15s; }
+    .mg-toggle-item.active { border-color: var(--accent); }
+    .mg-toggle-check { width: 18px; height: 18px; border-radius: 5px; border: 1.5px solid var(--muted); flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 11px; transition: all .15s; }
+    .mg-toggle-item.active .mg-toggle-check { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .mg-toggle-label { font-size: 12px; font-weight: 600; line-height: 1.3; }
   </style>
 </head>
 <body>
@@ -608,33 +635,7 @@
       <div class="scroll-content">
         <div class="page-title">Today's Workout</div>
         <div class="page-sub">Choose your training focus</div>
-        <div class="day-grid">
-          <div class="day-card push" data-day="Upper A (Push)">
-            <div class="day-card-name">Upper A</div>
-            <div class="day-card-muscles">Chest · Shoulders · Triceps</div>
-            <span class="day-card-tag tag-push">Push Focus</span>
-          </div>
-          <div class="day-card quad" data-day="Lower A (Quad)">
-            <div class="day-card-name">Lower A</div>
-            <div class="day-card-muscles">Quads · Glutes · Calves · Abs</div>
-            <span class="day-card-tag tag-quad">Quad Focus</span>
-          </div>
-          <div class="day-card pull" data-day="Upper B (Pull)">
-            <div class="day-card-name">Upper B</div>
-            <div class="day-card-muscles">Back · Biceps · Rear Delts</div>
-            <span class="day-card-tag tag-pull">Pull Focus</span>
-          </div>
-          <div class="day-card ham" data-day="Lower B (Hamstring)">
-            <div class="day-card-name">Lower B</div>
-            <div class="day-card-muscles">Hamstrings · Glutes · Calves · Abs</div>
-            <span class="day-card-tag tag-ham">Hamstring Focus</span>
-          </div>
-          <div class="day-card arms" data-day="Arm Day">
-            <div class="day-card-name">Arm Day</div>
-            <div class="day-card-muscles">Biceps · Triceps · Traps · Forearms</div>
-            <span class="day-card-tag tag-arms">Arms Focus</span>
-          </div>
-        </div>
+        <div class="day-grid" id="day-grid"></div>
       </div>
     </div>
 
@@ -790,6 +791,11 @@
       <div class="page-title">Settings</div>
       <div class="page-sub">Customize your experience</div>
       <div class="settings-section">
+        <div class="settings-section-hdr">Workout Split</div>
+        <div class="settings-card" id="settings-split-card"></div>
+        <button class="add-day-btn" id="add-day-btn">+ Add Day</button>
+      </div>
+      <div class="settings-section">
         <div class="settings-section-hdr">Tabs</div>
         <div class="settings-card" id="settings-tabs-card"></div>
       </div>
@@ -916,6 +922,20 @@
     </div>
     <div class="modal-footer">
       <button class="finish-btn" id="goals-save-btn" style="background:var(--accent)">Save Goals</button>
+    </div>
+  </div>
+</div>
+
+<!-- SPLIT EDIT MODAL -->
+<div id="split-edit-modal" class="modal-overlay" style="display:none">
+  <div class="modal-card">
+    <div class="modal-header">
+      <div class="modal-title" id="split-edit-title">Edit Day</div>
+      <button id="split-edit-close" class="modal-close-btn">&#10005;</button>
+    </div>
+    <div class="modal-body" id="split-edit-body"></div>
+    <div class="modal-footer">
+      <button class="finish-btn" id="split-edit-save" style="background:var(--accent)">Save Day</button>
     </div>
   </div>
 </div>
@@ -1146,12 +1166,15 @@ const store = {
   saveAppSettings(d) { localStorage.setItem('gym_app_settings', JSON.stringify(d)); },
   getQuickLog()      { return JSON.parse(localStorage.getItem('gym_quick_log')     || '[]'); },
   saveQuickLog(d)    { localStorage.setItem('gym_quick_log',    JSON.stringify(d)); },
+  getSplitConfig()   { return JSON.parse(localStorage.getItem('gym_split_config')  || 'null') || DEFAULT_SPLIT; },
+  saveSplitConfig(d) { localStorage.setItem('gym_split_config', JSON.stringify(d)); },
 };
 
 /* ════════════════════════════════════
    STATE
    ════════════════════════════════════ */
 let session = null;
+let splitEditState = null;
 let progressCurrentMG = null;
 let progressCurrentEx = null;
 let historyExpandedSessions = new Set();
@@ -1206,6 +1229,44 @@ const FOOD_DB = [
 ];
 
 /* ════════════════════════════════════
+   SPLIT CONFIG
+   ════════════════════════════════════ */
+const GROUP_MAP = {
+  chest: CHEST, shoulders_push: SHOULDERS_PUSH, shoulders_rear: SHOULDERS_REAR,
+  back: BACK, biceps: BICEPS, triceps: TRICEPS, traps: TRAPS, forearms: FOREARMS,
+  quads: QUADS, hamstrings: HAMSTRINGS, glutes_abs: GLUTES_ABS, calves: CALVES, abs_core: ABS_CORE,
+};
+const SPLIT_COLORS = {
+  orange: { border:'var(--accent)',  tag_bg:'rgba(249,115,22,.15)',  tag_fg:'var(--accent)',  solid:'#f97316' },
+  green:  { border:'var(--green)',   tag_bg:'rgba(34,197,94,.15)',   tag_fg:'var(--green)',   solid:'#22c55e' },
+  blue:   { border:'var(--blue)',    tag_bg:'rgba(96,165,250,.15)',  tag_fg:'var(--blue)',    solid:'#60a5fa' },
+  purple: { border:'var(--purple)',  tag_bg:'rgba(192,132,252,.15)', tag_fg:'var(--purple)',  solid:'#c084fc' },
+  yellow: { border:'var(--yellow)',  tag_bg:'rgba(251,191,36,.15)',  tag_fg:'var(--yellow)',  solid:'#fbbf24' },
+};
+const DEFAULT_SPLIT = [
+  { id:'day_1', name:'Upper A', focus:'Push Focus',      muscles:'Chest · Shoulders · Triceps',         color:'orange', groups:['chest','shoulders_push','triceps','back','biceps','shoulders_rear','traps','forearms'] },
+  { id:'day_2', name:'Lower A', focus:'Quad Focus',      muscles:'Quads · Glutes · Calves · Abs',       color:'green',  groups:['quads','hamstrings','glutes_abs','calves','abs_core'] },
+  { id:'day_3', name:'Upper B', focus:'Pull Focus',      muscles:'Back · Biceps · Rear Delts',          color:'blue',   groups:['back','biceps','shoulders_rear','chest','shoulders_push','triceps','traps','forearms'] },
+  { id:'day_4', name:'Lower B', focus:'Hamstring Focus', muscles:'Hamstrings · Glutes · Calves · Abs',  color:'purple', groups:['hamstrings','quads','glutes_abs','calves','abs_core'] },
+  { id:'day_5', name:'Arm Day', focus:'Arms Focus',      muscles:'Biceps · Triceps · Traps · Forearms', color:'yellow', groups:['biceps','triceps','traps','forearms'] },
+];
+const ALL_GROUPS = [
+  { id:'chest',          label:'Chest' },
+  { id:'shoulders_push', label:'Shoulders (Front/Side)' },
+  { id:'shoulders_rear', label:'Shoulders (Rear)' },
+  { id:'back',           label:'Back' },
+  { id:'biceps',         label:'Biceps' },
+  { id:'triceps',        label:'Triceps' },
+  { id:'traps',          label:'Traps' },
+  { id:'forearms',       label:'Forearms' },
+  { id:'quads',          label:'Quads' },
+  { id:'hamstrings',     label:'Hamstrings' },
+  { id:'glutes_abs',     label:'Glutes' },
+  { id:'calves',         label:'Calves' },
+  { id:'abs_core',       label:'Abs / Core' },
+];
+
+/* ════════════════════════════════════
    SCREEN HELPERS
    ════════════════════════════════════ */
 function showScreen(id) {
@@ -1257,20 +1318,34 @@ document.querySelectorAll('.nav-btn').forEach(btn => {
 /* ════════════════════════════════════
    DAY SELECTION
    ════════════════════════════════════ */
-document.querySelectorAll('.day-card').forEach(card => {
-  card.addEventListener('click', () => {
-    const day = card.dataset.day;
-    if (session && session.exercises.length > 0 && session.dayType !== day) {
-      if (!confirm(`You have an active ${session.dayType} workout. Start new ${day} workout?`)) return;
-    }
-    if (session && session.dayType === day) {
-      // resume
-    } else {
-      session = { dayType: day, date: new Date().toISOString(), exercises: [] };
-      store.saveDraft(session);
-    }
-    openWorkoutScreen();
-  });
+function renderDayCards() {
+  const split = store.getSplitConfig();
+  const grid = document.getElementById('day-grid');
+  if (!grid) return;
+  grid.innerHTML = split.map(day => {
+    const c = SPLIT_COLORS[day.color] || SPLIT_COLORS.orange;
+    const hasDraft = session && session.dayType === day.name && session.exercises.length > 0;
+    return `
+      <div class="day-card" data-day="${escHtml(day.name)}" style="border-left-color:${c.border}">
+        <div class="day-card-name">${escHtml(day.name)}${hasDraft ? '<span class="draft-pill">In Progress</span>' : ''}</div>
+        <div class="day-card-muscles">${escHtml(day.muscles)}</div>
+        <span class="day-card-tag" style="background:${c.tag_bg};color:${c.tag_fg}">${escHtml(day.focus)}</span>
+      </div>`;
+  }).join('');
+}
+
+document.getElementById('day-grid').addEventListener('click', e => {
+  const card = e.target.closest('.day-card');
+  if (!card) return;
+  const day = card.dataset.day;
+  if (session && session.exercises.length > 0 && session.dayType !== day) {
+    if (!confirm(`You have an active ${session.dayType} workout. Start new ${day} workout?`)) return;
+  }
+  if (!(session && session.dayType === day)) {
+    session = { dayType: day, date: new Date().toISOString(), exercises: [] };
+    store.saveDraft(session);
+  }
+  openWorkoutScreen();
 });
 
 function openWorkoutScreen() {
@@ -1297,14 +1372,7 @@ document.getElementById('back-from-workout').addEventListener('click', () => {
 });
 
 function refreshDayCards() {
-  document.querySelectorAll('.day-card').forEach(card => {
-    const pill = card.querySelector('.draft-pill');
-    if (pill) pill.remove();
-    if (session && card.dataset.day === session.dayType && session.exercises.length > 0) {
-      const name = card.querySelector('.day-card-name');
-      name.insertAdjacentHTML('beforeend', `<span class="draft-pill">In Progress</span>`);
-    }
-  });
+  renderDayCards();
 }
 
 /* ════════════════════════════════════
@@ -1314,32 +1382,91 @@ document.getElementById('workout-search').addEventListener('input', e => {
   renderSearchResults(e.target.value.trim());
 });
 
-function getExercisesForDay(day) {
-  const base    = DB[day] || [];
+function getExercisesForDay(dayName) {
+  const split = store.getSplitConfig();
+  const day = split.find(d => d.name === dayName);
+  let base;
+  if (day) {
+    base = dedup(day.groups.flatMap(g => GROUP_MAP[g] || []));
+  } else {
+    base = DB[dayName] || dedup(Object.values(GROUP_MAP).flat());
+  }
   const customs = store.getCustomEx();
-  const names   = new Set(base.map(e => e.name.toLowerCase()));
+  const names = new Set(base.map(e => e.name.toLowerCase()));
   return [...base, ...customs.filter(e => !names.has(e.name.toLowerCase()))];
+}
+
+function getAllExercises() {
+  const seen = new Set();
+  const result = [];
+  const groupedEntries = [
+    { group:'Chest',      list: CHEST },
+    { group:'Shoulders',  list: dedup([...SHOULDERS_PUSH, ...SHOULDERS_REAR]) },
+    { group:'Back',       list: BACK },
+    { group:'Biceps',     list: BICEPS },
+    { group:'Triceps',    list: TRICEPS },
+    { group:'Traps',      list: TRAPS },
+    { group:'Forearms',   list: FOREARMS },
+    { group:'Quads',      list: QUADS },
+    { group:'Hamstrings', list: HAMSTRINGS },
+    { group:'Glutes',     list: GLUTES_ABS },
+    { group:'Calves',     list: CALVES },
+    { group:'Abs / Core', list: ABS_CORE },
+  ];
+  for (const { group, list } of groupedEntries) {
+    for (const ex of list) {
+      if (!seen.has(ex.name.toLowerCase())) {
+        seen.add(ex.name.toLowerCase());
+        result.push({ ...ex, muscleGroup: group });
+      }
+    }
+  }
+  for (const ex of store.getCustomEx()) {
+    if (!seen.has(ex.name.toLowerCase())) {
+      seen.add(ex.name.toLowerCase());
+      result.push({ ...ex, muscleGroup: 'Custom' });
+    }
+  }
+  return result;
+}
+
+function getLoggedExerciseNames() {
+  const names = new Set();
+  store.getSessions().forEach(s => s.exercises.forEach(ex => names.add(ex.name.toLowerCase())));
+  return names;
 }
 
 function renderSearchResults(q) {
   const box = document.getElementById('search-results-box');
   if (!q) { box.style.display = 'none'; return; }
-
-  const all      = getExercisesForDay(session.dayType);
-  const filtered = all.filter(e => e.name.toLowerCase().includes(q.toLowerCase()));
-  const alreadyAdded = new Set(session.exercises.map(e => e.name));
-
-  let html = filtered.map(ex => {
-    const inWorkout = alreadyAdded.has(ex.name);
+  const ql = q.toLowerCase();
+  const all = getAllExercises();
+  const filtered = all.filter(e =>
+    e.name.toLowerCase().includes(ql) ||
+    (e.muscleGroup && e.muscleGroup.toLowerCase().includes(ql))
+  );
+  const alreadyAdded = new Set(session.exercises.map(e => e.name.toLowerCase()));
+  const loggedNames = getLoggedExerciseNames();
+  filtered.sort((a, b) => {
+    const aL = loggedNames.has(a.name.toLowerCase());
+    const bL = loggedNames.has(b.name.toLowerCase());
+    if (aL !== bL) return aL ? -1 : 1;
+    return a.name.localeCompare(b.name);
+  });
+  const toShow = filtered.slice(0, 25);
+  let html = toShow.map(ex => {
+    const inWorkout = alreadyAdded.has(ex.name.toLowerCase());
     return `
-      <div class="search-result-item ${inWorkout ? 'already-added' : ''}"
+      <div class="search-result-item${inWorkout ? ' already-added' : ''}"
            data-name="${escHtml(ex.name)}" data-type="${ex.type}">
-        <span class="search-result-name">${escHtml(ex.name)}${inWorkout ? ' <span style="color:var(--muted);font-size:11px">&middot; added</span>' : ''}</span>
+        <div style="min-width:0;flex:1">
+          <div class="search-result-name">${escHtml(ex.name)}${inWorkout ? ' <span style="color:var(--muted);font-size:11px">&middot; added</span>' : ''}</div>
+          <div style="font-size:10px;color:var(--muted);margin-top:1px">${escHtml(ex.muscleGroup || '')}</div>
+        </div>
         <span class="type-badge type-${ex.type}">${ex.type === 'compound' ? 'Compound' : 'Accessory'}</span>
       </div>`;
   }).join('');
-
-  const exactMatch = all.find(e => e.name.toLowerCase() === q.toLowerCase());
+  const exactMatch = all.find(e => e.name.toLowerCase() === ql);
   if (!exactMatch) {
     html += `
       <div class="custom-add-row">
@@ -1348,7 +1475,7 @@ function renderSearchResults(q) {
         <button class="custom-type-btn" data-custom-name="${escHtml(q)}" data-custom-type="accessory">Accessory</button>
       </div>`;
   }
-
+  if (!html) html = `<div style="padding:12px 16px;color:var(--muted);font-size:13px">No exercises found</div>`;
   box.innerHTML = html;
   box.style.display = 'block';
 }
@@ -1456,6 +1583,7 @@ function buildExCardHtml(ex, idx) {
           <span class="set-sep">&#215;</span>
           <input type="number" class="set-input" data-field="reps" data-ex-idx="${idx}" data-set-idx="${sIdx}"
             placeholder="reps" min="0" step="1" value="${escHtml(String(s.reps))}" inputmode="numeric" autocomplete="off">
+          <span class="set-timestamp" id="ts-${idx}-${sIdx}">${s.repTimestamp ? formatTimestamp(s.repTimestamp) : ''}</span>
         </div>
         ${ex.sets.length > 1 ? `<button class="del-set-btn" data-ex-idx="${idx}" data-set-idx="${sIdx}">&#10005;</button>` : ''}
       </div>`;
@@ -1580,10 +1708,28 @@ document.getElementById('workout-exercises').addEventListener('input', e => {
   const setIdx = parseInt(input.dataset.setIdx);
   const field  = input.dataset.field;
   if (session.exercises[exIdx] && session.exercises[exIdx].sets[setIdx] !== undefined) {
-    session.exercises[exIdx].sets[setIdx][field] = input.value;
+    const set = session.exercises[exIdx].sets[setIdx];
+    if (field === 'reps') {
+      const hadValue = set.reps !== '' && set.reps != null;
+      set.reps = input.value;
+      if (input.value !== '' && !hadValue) {
+        set.repTimestamp = Date.now();
+      } else if (input.value === '') {
+        set.repTimestamp = null;
+      }
+      const tsEl = document.getElementById(`ts-${exIdx}-${setIdx}`);
+      if (tsEl) tsEl.textContent = set.repTimestamp ? formatTimestamp(set.repTimestamp) : '';
+    } else {
+      set[field] = input.value;
+    }
     store.saveDraft(session);
   }
 });
+
+function formatTimestamp(ts) {
+  if (!ts) return '';
+  return new Date(ts).toLocaleTimeString('en-US', { hour:'numeric', minute:'2-digit' });
+}
 
 /* ════════════════════════════════════
    FINISH WORKOUT
@@ -1916,15 +2062,9 @@ function closePastWorkoutModal() {
 function renderPastWorkoutModal() {
   if (!pastWorkout) return;
   const body = document.getElementById('past-workout-body');
-  const dayTypes = [
-    { key:'Upper A (Push)',      label:'Upper A' },
-    { key:'Lower A (Quad)',      label:'Lower A' },
-    { key:'Upper B (Pull)',      label:'Upper B' },
-    { key:'Lower B (Hamstring)', label:'Lower B' },
-    { key:'Arm Day',             label:'Arms'    },
-  ];
-  const dayBtnsHtml = dayTypes.map(dt =>
-    `<button class="pw-day-btn${pastWorkout.dayType === dt.key ? ' active' : ''}" data-day="${escHtml(dt.key)}">${dt.label}</button>`
+  const split = store.getSplitConfig();
+  const dayBtnsHtml = split.map(d =>
+    `<button class="pw-day-btn${pastWorkout.dayType === d.name ? ' active' : ''}" data-day="${escHtml(d.name)}">${escHtml(d.name)}</button>`
   ).join('');
 
   const exercisesHtml = pastWorkout.exercises.map((ex, exIdx) => {
@@ -3063,6 +3203,23 @@ function renderSettingsTab() {
         <span class="toggle-track"></span>
       </label>
     </div>`).join('');
+
+  const split = store.getSplitConfig();
+  document.getElementById('settings-split-card').innerHTML = split.map((day, idx) => {
+    const c = SPLIT_COLORS[day.color] || SPLIT_COLORS.orange;
+    return `
+      <div class="split-day-row">
+        <div class="split-day-color-dot" style="background:${c.solid}"></div>
+        <div class="split-day-info">
+          <div class="split-day-name-lbl">${escHtml(day.name)}</div>
+          <div class="split-day-sub">${escHtml(day.focus || '')}</div>
+        </div>
+        <div class="split-day-actions">
+          <button class="split-edit-btn" data-split-idx="${idx}">Edit</button>
+          <button class="split-del-btn" data-split-idx="${idx}">&#10005;</button>
+        </div>
+      </div>`;
+  }).join('');
 }
 
 document.getElementById('settings-tabs-card').addEventListener('change', e => {
@@ -3074,6 +3231,114 @@ document.getElementById('settings-tabs-card').addEventListener('change', e => {
   settings.hiddenTabs = [...hidden];
   store.saveAppSettings(settings);
   applyTabVisibility();
+});
+
+document.getElementById('tab-settings').addEventListener('click', e => {
+  const editBtn = e.target.closest('.split-edit-btn');
+  if (editBtn) { openSplitEditor(parseInt(editBtn.dataset.splitIdx)); return; }
+  const delBtn = e.target.closest('.split-del-btn');
+  if (delBtn) {
+    const idx = parseInt(delBtn.dataset.splitIdx);
+    const split = store.getSplitConfig();
+    if (split.length <= 1) { toast('Need at least one day', false); return; }
+    if (!confirm(`Delete "${split[idx].name}"?`)) return;
+    split.splice(idx, 1);
+    store.saveSplitConfig(split);
+    renderSettingsTab();
+    renderDayCards();
+    return;
+  }
+  const addBtn = e.target.closest('.add-day-btn');
+  if (addBtn) { openSplitEditor(-1); return; }
+});
+
+/* ════════════════════════════════════
+   SPLIT EDITOR
+   ════════════════════════════════════ */
+function openSplitEditor(idx) {
+  const split = store.getSplitConfig();
+  if (idx === -1) {
+    splitEditState = { idx: -1, day: { id:'day_'+Date.now(), name:'', focus:'', muscles:'', color:'orange', groups:['chest'] } };
+    document.getElementById('split-edit-title').textContent = 'Add Day';
+  } else {
+    splitEditState = { idx, day: { ...split[idx], groups: [...split[idx].groups] } };
+    document.getElementById('split-edit-title').textContent = 'Edit Day';
+  }
+  renderSplitEditModal();
+  document.getElementById('split-edit-modal').style.display = 'flex';
+}
+
+function renderSplitEditModal() {
+  const { day } = splitEditState;
+  const swatches = Object.entries(SPLIT_COLORS).map(([id, c]) =>
+    `<div class="color-swatch${day.color === id ? ' selected' : ''}" data-color="${id}" style="background:${c.solid}"></div>`
+  ).join('');
+  const toggles = ALL_GROUPS.map(g => {
+    const on = day.groups.includes(g.id);
+    return `<div class="mg-toggle-item${on ? ' active' : ''}" data-group="${g.id}">
+      <div class="mg-toggle-check">${on ? '&#10003;' : ''}</div>
+      <span class="mg-toggle-label">${escHtml(g.label)}</span>
+    </div>`;
+  }).join('');
+  document.getElementById('split-edit-body').innerHTML = `
+    <div class="pw-section">
+      <div class="section-label" style="margin-bottom:8px">Day Name</div>
+      <input type="text" class="search-input" id="se-name" placeholder="e.g. Upper A" value="${escHtml(day.name)}" style="padding:12px 14px">
+    </div>
+    <div class="pw-section">
+      <div class="section-label" style="margin-bottom:8px">Focus Label</div>
+      <input type="text" class="search-input" id="se-focus" placeholder="e.g. Push Focus" value="${escHtml(day.focus)}" style="padding:12px 14px">
+    </div>
+    <div class="pw-section">
+      <div class="section-label" style="margin-bottom:8px">Muscles (display text)</div>
+      <input type="text" class="search-input" id="se-muscles" placeholder="e.g. Chest · Shoulders · Triceps" value="${escHtml(day.muscles)}" style="padding:12px 14px">
+    </div>
+    <div class="pw-section">
+      <div class="section-label" style="margin-bottom:8px">Color</div>
+      <div class="color-swatch-row">${swatches}</div>
+    </div>
+    <div class="pw-section">
+      <div class="section-label" style="margin-bottom:8px">Exercise Categories</div>
+      <div class="mg-toggle-grid">${toggles}</div>
+    </div>`;
+}
+
+document.getElementById('split-edit-close').addEventListener('click', () => {
+  document.getElementById('split-edit-modal').style.display = 'none';
+});
+document.getElementById('split-edit-modal').addEventListener('click', e => {
+  if (e.target === document.getElementById('split-edit-modal')) {
+    document.getElementById('split-edit-modal').style.display = 'none';
+    return;
+  }
+  const swatch = e.target.closest('.color-swatch');
+  if (swatch) { splitEditState.day.color = swatch.dataset.color; renderSplitEditModal(); return; }
+  const toggle = e.target.closest('.mg-toggle-item');
+  if (toggle) {
+    const gid = toggle.dataset.group;
+    const i = splitEditState.day.groups.indexOf(gid);
+    if (i >= 0) splitEditState.day.groups.splice(i, 1);
+    else splitEditState.day.groups.push(gid);
+    renderSplitEditModal();
+  }
+});
+document.getElementById('split-edit-save').addEventListener('click', () => {
+  const name    = document.getElementById('se-name').value.trim();
+  const focus   = document.getElementById('se-focus').value.trim();
+  const muscles = document.getElementById('se-muscles').value.trim();
+  if (!name) { toast('Enter a day name', false); return; }
+  if (splitEditState.day.groups.length === 0) { toast('Select at least one category', false); return; }
+  splitEditState.day.name    = name;
+  splitEditState.day.focus   = focus;
+  splitEditState.day.muscles = muscles;
+  const split = store.getSplitConfig();
+  if (splitEditState.idx === -1) split.push(splitEditState.day);
+  else split[splitEditState.idx] = splitEditState.day;
+  store.saveSplitConfig(split);
+  document.getElementById('split-edit-modal').style.display = 'none';
+  renderSettingsTab();
+  renderDayCards();
+  toast('Split saved!');
 });
 
 /* ════════════════════════════════════
@@ -3097,6 +3362,7 @@ function toast(msg, ok=true) {
    ════════════════════════════════════ */
 (function init() {
   applyTabVisibility();
+  renderDayCards();
   renderHomeTab();
   const draft = store.getDraft();
   if (draft && draft.exercises && draft.exercises.length > 0) {
