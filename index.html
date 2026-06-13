@@ -193,7 +193,8 @@
 
     /* Sets */
     .sets-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 8px; }
-    .set-row { display: flex; align-items: center; gap: 6px; }
+    .set-row { position: relative; overflow: hidden; border-radius: 8px; }
+    .set-row-inner { display: flex; align-items: center; gap: 6px; background: var(--bg); position: relative; z-index: 1; transition: transform .25s cubic-bezier(.25,.46,.45,.94); }
     .set-num { font-size: 12px; font-weight: 700; color: var(--muted); min-width: 36px; flex-shrink: 0; }
     .set-num.drop-label { color: var(--purple); min-width: 36px; }
     .set-inputs { display: flex; align-items: center; gap: 5px; flex: 1; min-width: 0; }
@@ -207,7 +208,10 @@
     .set-input:focus { border-color: var(--accent); }
     .set-input::placeholder { color: var(--muted); font-size: 11px; font-weight: 400; }
     .set-sep { color: var(--muted); font-size: 14px; font-weight: 600; flex-shrink: 0; }
-    .drop-set-row { margin-left: 16px; border-left: 2px solid rgba(192,132,252,.45); padding-left: 10px; }
+    .drop-set-row { margin-left: 16px; }
+    .drop-set-row .set-row-inner { border-left: 2px solid rgba(192,132,252,.45); padding-left: 10px; }
+    .swipe-del-reveal { position: absolute; right: 0; top: 0; bottom: 0; width: 72px; background: var(--red); display: flex; align-items: center; justify-content: center; z-index: 0; }
+    .swipe-del-btn { background: none; border: none; color: #fff; font-size: 12px; font-weight: 800; cursor: pointer; width: 100%; height: 100%; letter-spacing: .3px; }
     .del-set-btn {
       background: none; border: none; color: var(--muted); cursor: pointer;
       font-size: 16px; padding: 4px 6px; border-radius: 6px; transition: color .15s; line-height: 1; flex-shrink: 0;
@@ -926,6 +930,21 @@
   </div>
 </div>
 
+<!-- FINISH CONFIRM MODAL -->
+<div id="finish-confirm-modal" class="modal-overlay" style="display:none">
+  <div class="modal-card">
+    <div class="modal-header">
+      <div class="modal-title">Finish Workout?</div>
+      <button id="finish-confirm-close" class="modal-close-btn">&#10005;</button>
+    </div>
+    <div class="modal-body" id="finish-confirm-body"></div>
+    <div class="modal-footer" style="display:flex;gap:10px">
+      <button class="finish-btn" id="finish-keep-going-btn" style="background:var(--surf3);border:1px solid var(--border);color:var(--text);flex:1">Keep Going</button>
+      <button class="finish-btn" id="finish-confirm-save-btn" style="background:var(--green);flex:1">Save Workout</button>
+    </div>
+  </div>
+</div>
+
 <!-- SPLIT EDIT MODAL -->
 <div id="split-edit-modal" class="modal-overlay" style="display:none">
   <div class="modal-card">
@@ -1575,17 +1594,19 @@ function buildExCardHtml(ex, idx) {
     const label    = s.isDropSet ? 'Drop' : `Set ${regCount}`;
     const numClass = s.isDropSet ? 'set-num drop-label' : 'set-num';
     return `
-      <div class="set-row${s.isDropSet ? ' drop-set-row' : ''}" data-set-idx="${sIdx}">
-        <span class="${numClass}">${label}</span>
-        <div class="set-inputs">
-          <input type="number" class="set-input" data-field="weight" data-ex-idx="${idx}" data-set-idx="${sIdx}"
-            placeholder="lbs" min="0" step="2.5" value="${escHtml(String(s.weight))}" inputmode="decimal" autocomplete="off">
-          <span class="set-sep">&#215;</span>
-          <input type="number" class="set-input" data-field="reps" data-ex-idx="${idx}" data-set-idx="${sIdx}"
-            placeholder="reps" min="0" step="1" value="${escHtml(String(s.reps))}" inputmode="numeric" autocomplete="off">
-          <span class="set-timestamp" id="ts-${idx}-${sIdx}">${s.repTimestamp ? formatTimestamp(s.repTimestamp) : ''}</span>
+      <div class="set-row${s.isDropSet ? ' drop-set-row' : ''}" data-set-idx="${sIdx}" data-ex-idx="${idx}">
+        <div class="set-row-inner">
+          <span class="${numClass}">${label}</span>
+          <div class="set-inputs">
+            <input type="number" class="set-input" data-field="weight" data-ex-idx="${idx}" data-set-idx="${sIdx}"
+              placeholder="lbs" min="0" step="2.5" value="${escHtml(String(s.weight))}" inputmode="decimal" autocomplete="off">
+            <span class="set-sep">&#215;</span>
+            <input type="number" class="set-input" data-field="reps" data-ex-idx="${idx}" data-set-idx="${sIdx}"
+              placeholder="reps" min="0" step="1" value="${escHtml(String(s.reps))}" inputmode="numeric" autocomplete="off">
+            <span class="set-timestamp" id="ts-${idx}-${sIdx}">${s.repTimestamp ? formatTimestamp(s.repTimestamp) : ''}</span>
+          </div>
         </div>
-        ${ex.sets.length > 1 ? `<button class="del-set-btn" data-ex-idx="${idx}" data-set-idx="${sIdx}">&#10005;</button>` : ''}
+        ${ex.sets.length > 1 ? `<div class="swipe-del-reveal"><button class="swipe-del-btn" data-ex-idx="${idx}" data-set-idx="${sIdx}">Delete</button></div>` : ''}
       </div>`;
   }).join('');
 
@@ -1688,11 +1709,14 @@ document.getElementById('workout-exercises').addEventListener('click', e => {
     }, 40);
     return;
   }
-  // Delete set
-  const delSetBtn = e.target.closest('.del-set-btn');
-  if (delSetBtn) {
-    const exIdx  = parseInt(delSetBtn.dataset.exIdx);
-    const setIdx = parseInt(delSetBtn.dataset.setIdx);
+  // Close swipe rows when tapping outside a set row
+  if (!e.target.closest('.set-row')) closeAllSwipeRows();
+
+  // Swipe-to-delete set
+  const swipeDelBtn = e.target.closest('.swipe-del-btn');
+  if (swipeDelBtn) {
+    const exIdx  = parseInt(swipeDelBtn.dataset.exIdx);
+    const setIdx = parseInt(swipeDelBtn.dataset.setIdx);
     session.exercises[exIdx].sets.splice(setIdx, 1);
     store.saveDraft(session);
     renderExerciseCard(exIdx);
@@ -1732,10 +1756,86 @@ function formatTimestamp(ts) {
 }
 
 /* ════════════════════════════════════
+   SWIPE-TO-DELETE SETS
+   ════════════════════════════════════ */
+let swipeData = null;
+const SWIPE_THRESHOLD = 36;
+const SWIPE_WIDTH = 72;
+
+function closeAllSwipeRows() {
+  document.querySelectorAll('#workout-exercises .set-row.swipe-open').forEach(row => {
+    const inner = row.querySelector('.set-row-inner');
+    if (inner) { inner.style.transition = ''; inner.style.transform = ''; }
+    row.classList.remove('swipe-open');
+  });
+}
+
+document.getElementById('workout-exercises').addEventListener('touchstart', e => {
+  const row = e.target.closest('.set-row');
+  if (!row || !row.querySelector('.swipe-del-reveal')) return;
+  document.querySelectorAll('#workout-exercises .set-row.swipe-open').forEach(r => {
+    if (r !== row) { const inn = r.querySelector('.set-row-inner'); if (inn) { inn.style.transition=''; inn.style.transform=''; } r.classList.remove('swipe-open'); }
+  });
+  swipeData = { row, inner: row.querySelector('.set-row-inner'), startX: e.touches[0].clientX, startY: e.touches[0].clientY, moved: false };
+}, { passive: true });
+
+document.getElementById('workout-exercises').addEventListener('touchmove', e => {
+  if (!swipeData) return;
+  const dx = e.touches[0].clientX - swipeData.startX;
+  const dy = e.touches[0].clientY - swipeData.startY;
+  if (!swipeData.moved) {
+    if (Math.abs(dy) > Math.abs(dx)) { swipeData = null; return; }
+    swipeData.moved = true;
+  }
+  e.preventDefault();
+  const x = Math.min(0, Math.max(-SWIPE_WIDTH, dx));
+  swipeData.inner.style.transition = 'none';
+  swipeData.inner.style.transform = `translateX(${x}px)`;
+}, { passive: false });
+
+document.getElementById('workout-exercises').addEventListener('touchend', e => {
+  if (!swipeData) return;
+  const { row, inner, moved } = swipeData;
+  if (!moved) { swipeData = null; return; }
+  const dx = e.changedTouches[0].clientX - swipeData.startX;
+  inner.style.transition = '';
+  if (dx < -SWIPE_THRESHOLD) {
+    inner.style.transform = `translateX(-${SWIPE_WIDTH}px)`;
+    row.classList.add('swipe-open');
+  } else {
+    inner.style.transform = '';
+    row.classList.remove('swipe-open');
+  }
+  swipeData = null;
+});
+
+/* ════════════════════════════════════
    FINISH WORKOUT
    ════════════════════════════════════ */
 document.getElementById('finish-btn').addEventListener('click', () => {
   if (!session || session.exercises.length === 0) return;
+  const validExercises = session.exercises
+    .map(ex => ({ ...ex, sets: ex.sets.filter(s => s.weight !== '' && s.reps !== '') }))
+    .filter(ex => ex.sets.length > 0);
+  if (validExercises.length === 0) { toast('Log at least one set first', false); return; }
+  const totalSets = validExercises.reduce((a, ex) => a + ex.sets.length, 0);
+  document.getElementById('finish-confirm-body').innerHTML = `
+    <div style="text-align:center;margin-bottom:18px">
+      <div style="font-size:20px;font-weight:800;margin-bottom:4px">${escHtml(session.dayType)}</div>
+      <div style="font-size:13px;color:var(--muted)">${validExercises.length} exercise${validExercises.length !== 1 ? 's' : ''} &middot; ${totalSets} set${totalSets !== 1 ? 's' : ''} total</div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      ${validExercises.map(ex => `
+        <div style="display:flex;justify-content:space-between;align-items:center;background:var(--surf);border:1px solid var(--border);border-radius:10px;padding:10px 14px">
+          <span style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;margin-right:10px">${escHtml(ex.name)}</span>
+          <span style="font-size:12px;color:var(--muted);flex-shrink:0">${ex.sets.length} set${ex.sets.length !== 1 ? 's' : ''}</span>
+        </div>`).join('')}
+    </div>`;
+  document.getElementById('finish-confirm-modal').style.display = 'flex';
+});
+
+function doSaveWorkout() {
+  if (!session) return;
   const sessions = store.getSessions();
   const saved = {
     dayType: session.dayType,
@@ -1746,15 +1846,27 @@ document.getElementById('finish-btn').addEventListener('click', () => {
                    .map(s => ({ weight: parseFloat(s.weight), reps: parseInt(s.reps), isDropSet: s.isDropSet || false }))
     })).filter(ex => ex.sets.length > 0)
   };
-  if (saved.exercises.length === 0) { toast('Log at least one set first', false); return; }
   sessions.push(saved);
   store.saveSessions(sessions);
   store.clearDraft();
   session = null;
+  document.getElementById('finish-confirm-modal').style.display = 'none';
   refreshDayCards();
   showScreen('screen-day');
   updateFinishBar();
   toast('Workout saved!');
+}
+
+document.getElementById('finish-confirm-close').addEventListener('click', () => {
+  document.getElementById('finish-confirm-modal').style.display = 'none';
+});
+document.getElementById('finish-keep-going-btn').addEventListener('click', () => {
+  document.getElementById('finish-confirm-modal').style.display = 'none';
+});
+document.getElementById('finish-confirm-save-btn').addEventListener('click', doSaveWorkout);
+document.getElementById('finish-confirm-modal').addEventListener('click', e => {
+  if (e.target === document.getElementById('finish-confirm-modal'))
+    document.getElementById('finish-confirm-modal').style.display = 'none';
 });
 
 /* ════════════════════════════════════
