@@ -603,6 +603,63 @@
     .mg-toggle-check { width: 18px; height: 18px; border-radius: 5px; border: 1.5px solid var(--muted); flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 11px; transition: all .15s; }
     .mg-toggle-item.active .mg-toggle-check { background: var(--accent); border-color: var(--accent); color: #fff; }
     .mg-toggle-label { font-size: 12px; font-weight: 600; line-height: 1.3; }
+
+    /* CHART TOOLTIP */
+    .chart-tooltip {
+      position: absolute; background: var(--surf2); border: 1px solid var(--border);
+      border-radius: 10px; padding: 8px 12px; pointer-events: none; z-index: 10;
+      display: none; box-shadow: 0 4px 16px rgba(0,0,0,.4); min-width: 130px;
+    }
+    .chart-tooltip-date { font-size: 10px; color: var(--muted); margin-bottom: 5px; font-weight: 700; text-transform: uppercase; letter-spacing: .4px; }
+    .chart-tooltip-set { font-size: 12px; font-weight: 600; line-height: 1.7; }
+    .chart-tooltip-set.is-drop { color: var(--purple); }
+    .chart-tooltip-weight { font-size: 15px; font-weight: 800; color: var(--accent); margin-bottom: 2px; }
+
+    /* EXERCISE SETTINGS MODAL */
+    .ex-settings-modal-card {
+      background: var(--bg); border-radius: 18px 18px 0 0; width: 100%;
+      height: 88vh; display: flex; flex-direction: column; border-top: 1px solid var(--border);
+      position: relative; overflow: hidden;
+    }
+    .ex-settings-screen { display: none; position: absolute; inset: 0; flex-direction: column; background: var(--bg); }
+    .ex-settings-screen.active { display: flex; }
+    .ex-settings-search-wrap { padding: 12px 16px 0; flex-shrink: 0; }
+    .ex-settings-list { flex: 1; overflow-y: auto; }
+    .ex-settings-list::-webkit-scrollbar { display: none; }
+    .ex-settings-group-hdr { font-size: 10px; font-weight: 700; letter-spacing: .8px; text-transform: uppercase; color: var(--muted); padding: 10px 16px 4px; background: var(--bg); }
+    .ex-settings-row {
+      display: flex; align-items: center; padding: 11px 16px; gap: 10px;
+      border-bottom: 1px solid var(--border); transition: background .15s;
+    }
+    .ex-settings-row-info { flex: 1; min-width: 0; cursor: pointer; }
+    .ex-settings-row-name { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .ex-settings-row-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+    .ex-settings-row.is-hidden .ex-settings-row-name { opacity: .4; }
+    .ex-vis-btn {
+      background: none; border: 1.5px solid var(--border); border-radius: 7px;
+      width: 32px; height: 28px; display: flex; align-items: center; justify-content: center;
+      color: var(--muted); font-size: 13px; cursor: pointer; flex-shrink: 0; transition: all .15s;
+    }
+    .ex-vis-btn.visible { border-color: var(--accent); color: var(--accent); }
+    .ex-edit-chevron { color: var(--muted); font-size: 16px; flex-shrink: 0; cursor: pointer; }
+    .ex-edit-section { padding: 16px; border-bottom: 1px solid var(--border); }
+    .ex-edit-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .7px; color: var(--muted); margin-bottom: 10px; }
+    .ex-type-btns { display: flex; gap: 8px; }
+    .ex-type-btn {
+      flex: 1; padding: 11px; border: 1.5px solid var(--border); border-radius: 9px;
+      background: var(--surf2); color: var(--muted); font-size: 13px; font-weight: 700;
+      cursor: pointer; transition: all .15s; text-align: center;
+    }
+    .ex-type-btn.sel-compound { border-color: var(--accent); color: var(--accent); background: rgba(249,115,22,.1); }
+    .ex-type-btn.sel-accessory { border-color: var(--text); color: var(--text); background: var(--surf3); }
+    .ex-rep-input {
+      width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: 9px;
+      padding: 11px 14px; color: var(--text); font-size: 16px; font-weight: 700;
+      outline: none; transition: border-color .18s;
+    }
+    .ex-rep-input:focus { border-color: var(--accent); }
+    .ex-rep-input::placeholder { color: var(--muted); font-weight: 400; font-size: 14px; }
+    .ex-edit-hint { font-size: 11px; color: var(--muted); margin-top: 7px; line-height: 1.5; }
   </style>
 </head>
 <body>
@@ -650,6 +707,7 @@
           <div class="workout-top-day" id="workout-day-label"></div>
           <div class="workout-top-sub" id="workout-top-sub">Search above to add exercises</div>
         </div>
+        <button class="back-btn" id="workout-ex-settings-btn" title="Exercise Library" style="font-size:16px">&#9881;</button>
       </div>
 
       <div class="workout-search-sticky">
@@ -758,7 +816,10 @@
       <div class="scroll-content" style="padding-top:14px" id="ex-detail-scroll">
         <div id="ex-detail-graph-wrap" class="graph-wrap" style="display:none;margin-bottom:16px">
           <div class="graph-title">Weight Over Time</div>
-          <div id="ex-detail-canvas-wrap"><canvas id="ex-detail-graph"></canvas></div>
+          <div id="ex-detail-canvas-wrap" style="position:relative">
+            <canvas id="ex-detail-graph"></canvas>
+            <div id="ex-graph-tooltip" class="chart-tooltip"></div>
+          </div>
         </div>
         <div class="section-label" id="ex-history-label" style="display:none;margin-bottom:12px">Session History</div>
         <div id="ex-history-list"></div>
@@ -956,6 +1017,43 @@
     <div class="modal-footer">
       <button class="finish-btn" id="split-edit-save" style="background:var(--accent)">Save Day</button>
     </div>
+  </div>
+</div>
+
+<!-- EXERCISE SETTINGS MODAL -->
+<div id="ex-settings-modal" class="modal-overlay" style="display:none">
+  <div class="ex-settings-modal-card">
+
+    <!-- Screen: Exercise List -->
+    <div id="ex-settings-screen-list" class="ex-settings-screen active">
+      <div class="modal-header" style="flex-shrink:0">
+        <div class="modal-title">Exercise Library</div>
+        <button id="ex-settings-close" class="modal-close-btn">&#10005;</button>
+      </div>
+      <div class="ex-settings-search-wrap">
+        <div class="search-wrap">
+          <span class="search-icon">&#128269;</span>
+          <input type="text" class="search-input" id="ex-settings-search" placeholder="Search exercises..." autocomplete="off">
+        </div>
+      </div>
+      <div style="padding:8px 16px 4px;flex-shrink:0;font-size:11px;color:var(--muted)">Tap exercise to edit &middot; Toggle eye to show/hide in search</div>
+      <div class="ex-settings-list" id="ex-settings-list"></div>
+    </div>
+
+    <!-- Screen: Edit Exercise -->
+    <div id="ex-settings-screen-edit" class="ex-settings-screen">
+      <div class="modal-header" style="flex-shrink:0">
+        <button class="back-btn" id="ex-edit-back" style="flex-shrink:0;margin-right:4px">&#8592;</button>
+        <div class="modal-title" id="ex-edit-title" style="flex:1">Edit Exercise</div>
+      </div>
+      <div style="flex:1;overflow-y:auto">
+        <div id="ex-edit-body"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="finish-btn" id="ex-edit-save" style="background:var(--accent)">Save Changes</button>
+      </div>
+    </div>
+
   </div>
 </div>
 
@@ -1187,6 +1285,8 @@ const store = {
   saveQuickLog(d)    { localStorage.setItem('gym_quick_log',    JSON.stringify(d)); },
   getSplitConfig()   { return JSON.parse(localStorage.getItem('gym_split_config')  || 'null') || DEFAULT_SPLIT; },
   saveSplitConfig(d) { localStorage.setItem('gym_split_config', JSON.stringify(d)); },
+  getExOverrides()   { return JSON.parse(localStorage.getItem('gym_ex_overrides')  || '{}'); },
+  saveExOverrides(d) { localStorage.setItem('gym_ex_overrides', JSON.stringify(d)); },
 };
 
 /* ════════════════════════════════════
@@ -1459,11 +1559,13 @@ function renderSearchResults(q) {
   const box = document.getElementById('search-results-box');
   if (!q) { box.style.display = 'none'; return; }
   const ql = q.toLowerCase();
+  const overrides = store.getExOverrides();
   const all = getAllExercises();
-  const filtered = all.filter(e =>
-    e.name.toLowerCase().includes(ql) ||
-    (e.muscleGroup && e.muscleGroup.toLowerCase().includes(ql))
-  );
+  const filtered = all.filter(e => {
+    if (overrides[e.name.toLowerCase()]?.hidden) return false;
+    return e.name.toLowerCase().includes(ql) ||
+      (e.muscleGroup && e.muscleGroup.toLowerCase().includes(ql));
+  });
   const alreadyAdded = new Set(session.exercises.map(e => e.name.toLowerCase()));
   const loggedNames = getLoggedExerciseNames();
   filtered.sort((a, b) => {
@@ -1474,15 +1576,17 @@ function renderSearchResults(q) {
   });
   const toShow = filtered.slice(0, 25);
   let html = toShow.map(ex => {
+    const ov = overrides[ex.name.toLowerCase()] || {};
+    const effectiveType = ov.type || ex.type;
     const inWorkout = alreadyAdded.has(ex.name.toLowerCase());
     return `
       <div class="search-result-item${inWorkout ? ' already-added' : ''}"
-           data-name="${escHtml(ex.name)}" data-type="${ex.type}">
+           data-name="${escHtml(ex.name)}" data-type="${effectiveType}">
         <div style="min-width:0;flex:1">
           <div class="search-result-name">${escHtml(ex.name)}${inWorkout ? ' <span style="color:var(--muted);font-size:11px">&middot; added</span>' : ''}</div>
           <div style="font-size:10px;color:var(--muted);margin-top:1px">${escHtml(ex.muscleGroup || '')}</div>
         </div>
-        <span class="type-badge type-${ex.type}">${ex.type === 'compound' ? 'Compound' : 'Accessory'}</span>
+        <span class="type-badge type-${effectiveType}">${effectiveType === 'compound' ? 'Compound' : 'Accessory'}</span>
       </div>`;
   }).join('');
   const exactMatch = all.find(e => e.name.toLowerCase() === ql);
@@ -1566,7 +1670,11 @@ function renderExerciseCard(idx) {
 }
 
 function buildExCardHtml(ex, idx) {
-  const range = ex.type === 'compound' ? '6&#8211;8' : '8&#8211;15';
+  const overrides = store.getExOverrides();
+  const ov = overrides[ex.name.toLowerCase()] || {};
+  const effectiveType = ov.type || ex.type;
+  const defaultRange = effectiveType === 'compound' ? '6-8' : '8-15';
+  const range = (ov.repRange || defaultRange).replace(/-/g, '&#8211;');
 
   if (!ex.expanded) {
     const validSets = ex.sets.filter(s => s.weight !== '' || s.reps !== '');
@@ -1615,7 +1723,7 @@ function buildExCardHtml(ex, idx) {
       <div class="ex-card-header" data-ex-idx="${idx}">
         <div class="ex-card-main">
           <span class="ex-card-name">${escHtml(ex.name)}</span>
-          <span class="type-badge type-${ex.type}">${ex.type === 'compound' ? 'Compound' : 'Accessory'}</span>
+          <span class="type-badge type-${effectiveType}">${effectiveType === 'compound' ? 'Compound' : 'Accessory'}</span>
         </div>
         <div class="ex-card-btns">
           <span class="ex-expand-icon">&#9650;</span>
@@ -2694,7 +2802,8 @@ function renderExerciseDetail() {
   // Max weight per session for graph
   const graphData = exSessions.map(s => ({
     date: s.date,
-    maxWeight: Math.max(0, ...s.exercise.sets.map(set => parseFloat(set.weight) || 0))
+    maxWeight: Math.max(0, ...s.exercise.sets.map(set => parseFloat(set.weight) || 0)),
+    sets: s.exercise.sets
   })).filter(d => d.maxWeight > 0);
 
   const overallPR = graphData.length > 0 ? Math.max(...graphData.map(d => d.maxWeight)) : 0;
@@ -2787,11 +2896,13 @@ function drawExerciseGraph(data, overallPR) {
   });
   ctx.stroke();
 
-  // Dots — green for PR sessions
+  // Dots — green for PR sessions; store positions for tooltip
+  const dotPositions = [];
   data.forEach(d => {
     const isPR = d.maxWeight === overallPR;
     const x = xOf(new Date(d.date).getTime());
     const y = yOf(d.maxWeight);
+    dotPositions.push({ x, y, data: d });
     ctx.fillStyle = isPR ? '#22c55e' : '#f97316';
     ctx.beginPath();
     ctx.arc(x, y, isPR ? 5 : 3.5, 0, Math.PI*2);
@@ -2801,6 +2912,54 @@ function drawExerciseGraph(data, overallPR) {
       ctx.beginPath(); ctx.arc(x,y,5,0,Math.PI*2); ctx.fill(); ctx.stroke();
     }
   });
+
+  // Attach tooltip logic
+  const tooltip = document.getElementById('ex-graph-tooltip');
+  canvas._dotPositions = dotPositions;
+  canvas._overallPR = overallPR;
+  canvas._W = W;
+
+  function showTooltipAt(mx, my) {
+    const dots = canvas._dotPositions || [];
+    let nearestDist = Infinity, nearest = null;
+    for (const dot of dots) {
+      const d = Math.sqrt((mx - dot.x)**2 + (my - dot.y)**2);
+      if (d < nearestDist) { nearestDist = d; nearest = dot; }
+    }
+    if (!nearest || nearestDist > 44) { tooltip.style.display = 'none'; return; }
+    const d = nearest.data;
+    const ds = new Date(d.date).toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
+    let rc = 0;
+    const setsHtml = (d.sets || []).map(s => {
+      if (!s.isDropSet) rc++;
+      const lbl = s.isDropSet ? 'Drop' : `Set ${rc}`;
+      const w = s.weight || '?', r = s.reps || '?';
+      return `<div class="chart-tooltip-set${s.isDropSet ? ' is-drop' : ''}">${lbl}: ${w}lbs &times; ${r}</div>`;
+    }).join('');
+    tooltip.innerHTML = `<div class="chart-tooltip-date">${ds}${d.maxWeight === canvas._overallPR ? ' &#127942; PR' : ''}</div><div class="chart-tooltip-weight">${d.maxWeight} lbs</div>${setsHtml}`;
+    const cW = canvas._W;
+    const isRight = nearest.x > cW / 2;
+    tooltip.style.display = 'block';
+    tooltip.style.top = Math.max(0, nearest.y - 8) + 'px';
+    tooltip.style.left = isRight ? '' : (nearest.x + 10) + 'px';
+    tooltip.style.right = isRight ? (cW - nearest.x + 10) + 'px' : '';
+    tooltip.style.transform = 'translateY(-100%)';
+  }
+
+  canvas.onmousemove = e => {
+    const r = canvas.getBoundingClientRect();
+    showTooltipAt(e.clientX - r.left, e.clientY - r.top);
+  };
+  canvas.onmouseleave = () => { tooltip.style.display = 'none'; };
+  canvas.ontouchstart = e => {
+    e.preventDefault();
+    const r = canvas.getBoundingClientRect();
+    const t = e.touches[0];
+    showTooltipAt(t.clientX - r.left, t.clientY - r.top);
+  };
+  canvas.ontouchend = () => {
+    setTimeout(() => { tooltip.style.display = 'none'; }, 1800);
+  };
 }
 
 /* ════════════════════════════════════
@@ -3452,6 +3611,183 @@ document.getElementById('split-edit-save').addEventListener('click', () => {
   renderDayCards();
   toast('Split saved!');
 });
+
+/* ════════════════════════════════════
+   EXERCISE SETTINGS MODAL
+   ════════════════════════════════════ */
+let exSettingsEditName = null;
+let exSettingsEditType = null;
+
+function openExSettingsModal() {
+  document.getElementById('ex-settings-search').value = '';
+  showExSettingsScreen('ex-settings-screen-list');
+  renderExSettingsList('');
+  document.getElementById('ex-settings-modal').style.display = 'flex';
+}
+
+function closeExSettingsModal() {
+  document.getElementById('ex-settings-modal').style.display = 'none';
+}
+
+function showExSettingsScreen(id) {
+  document.querySelectorAll('.ex-settings-screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function renderExSettingsList(q) {
+  const overrides = store.getExOverrides();
+  const ql = q.toLowerCase();
+  const all = getAllExercises();
+  const filtered = ql
+    ? all.filter(e => e.name.toLowerCase().includes(ql) || (e.muscleGroup || '').toLowerCase().includes(ql))
+    : all;
+
+  // Group by muscle group
+  const groups = {};
+  for (const ex of filtered) {
+    const g = ex.muscleGroup || 'Custom';
+    if (!groups[g]) groups[g] = [];
+    groups[g].push(ex);
+  }
+
+  const groupOrder = ['Chest','Shoulders','Back','Biceps','Triceps','Traps','Forearms','Quads','Hamstrings','Glutes','Calves','Abs / Core','Custom'];
+  let html = '';
+  for (const g of groupOrder) {
+    if (!groups[g] || groups[g].length === 0) continue;
+    html += `<div class="ex-settings-group-hdr">${escHtml(g)}</div>`;
+    for (const ex of groups[g]) {
+      const ov = overrides[ex.name.toLowerCase()] || {};
+      const isHidden = !!ov.hidden;
+      const effectiveType = ov.type || ex.type;
+      const repRange = ov.repRange || (effectiveType === 'compound' ? '6-8' : '8-15');
+      html += `
+        <div class="ex-settings-row${isHidden ? ' is-hidden' : ''}" data-name="${escHtml(ex.name)}">
+          <div class="ex-settings-row-info" data-edit-name="${escHtml(ex.name)}">
+            <div class="ex-settings-row-name">${escHtml(ex.name)}</div>
+            <div class="ex-settings-row-sub">${escHtml(effectiveType === 'compound' ? 'Compound' : 'Accessory')} &middot; ${escHtml(repRange)} reps</div>
+          </div>
+          <button class="ex-vis-btn${isHidden ? '' : ' visible'}" data-vis-name="${escHtml(ex.name)}" title="${isHidden ? 'Hidden from search' : 'Visible in search'}">${isHidden ? '&#128683;' : '&#128065;'}</button>
+          <span class="ex-edit-chevron" data-edit-name="${escHtml(ex.name)}">&#8250;</span>
+        </div>`;
+    }
+  }
+
+  if (!html) html = `<div style="padding:24px 16px;color:var(--muted);font-size:14px;text-align:center">No exercises found</div>`;
+  document.getElementById('ex-settings-list').innerHTML = html;
+}
+
+function openExEdit(name) {
+  exSettingsEditName = name;
+  const overrides = store.getExOverrides();
+  const ov = overrides[name.toLowerCase()] || {};
+  const all = getAllExercises();
+  const ex = all.find(e => e.name.toLowerCase() === name.toLowerCase());
+  const baseType = ex ? ex.type : 'accessory';
+  exSettingsEditType = ov.type || baseType;
+  const repRange = ov.repRange || '';
+  const isCustom = ex && (ex.muscleGroup === 'Custom');
+
+  document.getElementById('ex-edit-title').textContent = name;
+  document.getElementById('ex-edit-body').innerHTML = `
+    <div class="ex-edit-section">
+      <div class="ex-edit-label">Exercise Type</div>
+      <div class="ex-type-btns">
+        <button class="ex-type-btn${exSettingsEditType === 'compound' ? ' sel-compound' : ''}" id="ex-type-btn-compound" data-type="compound">Compound</button>
+        <button class="ex-type-btn${exSettingsEditType === 'accessory' ? ' sel-accessory' : ''}" id="ex-type-btn-accessory" data-type="accessory">Accessory</button>
+      </div>
+    </div>
+    <div class="ex-edit-section">
+      <div class="ex-edit-label">Rep Range</div>
+      <input type="text" class="ex-rep-input" id="ex-edit-rep-range" placeholder="e.g. 6-8 or 10-15" value="${escHtml(repRange)}" inputmode="text" autocomplete="off">
+      <div class="ex-edit-hint">Leave blank to use default (Compound: 6-8, Accessory: 8-15)</div>
+    </div>
+    ${isCustom ? `
+    <div class="ex-edit-section">
+      <div class="ex-edit-label">Custom Exercise</div>
+      <button id="ex-delete-custom-btn" style="padding:10px 16px;background:none;border:1.5px solid var(--red);color:var(--red);border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;width:100%">Delete Custom Exercise</button>
+    </div>` : ''}`;
+
+  showExSettingsScreen('ex-settings-screen-edit');
+}
+
+document.getElementById('ex-settings-modal').addEventListener('click', e => {
+  if (e.target === document.getElementById('ex-settings-modal')) { closeExSettingsModal(); return; }
+
+  // Visibility toggle
+  const visBtn = e.target.closest('.ex-vis-btn');
+  if (visBtn) {
+    const name = visBtn.dataset.visName;
+    const overrides = store.getExOverrides();
+    const key = name.toLowerCase();
+    if (!overrides[key]) overrides[key] = {};
+    overrides[key].hidden = !overrides[key].hidden;
+    store.saveExOverrides(overrides);
+    renderExSettingsList(document.getElementById('ex-settings-search').value.trim());
+    return;
+  }
+
+  // Edit exercise (click on info or chevron)
+  const editTarget = e.target.closest('[data-edit-name]');
+  if (editTarget) { openExEdit(editTarget.dataset.editName); return; }
+
+  // Delete custom exercise
+  if (e.target.id === 'ex-delete-custom-btn') {
+    if (!exSettingsEditName) return;
+    if (!confirm(`Delete "${exSettingsEditName}"? This won't remove it from past sessions.`)) return;
+    const customs = store.getCustomEx().filter(c => c.name.toLowerCase() !== exSettingsEditName.toLowerCase());
+    store.saveCustomEx(customs);
+    const overrides = store.getExOverrides();
+    delete overrides[exSettingsEditName.toLowerCase()];
+    store.saveExOverrides(overrides);
+    showExSettingsScreen('ex-settings-screen-list');
+    renderExSettingsList(document.getElementById('ex-settings-search').value.trim());
+    toast('Exercise deleted');
+    return;
+  }
+
+  // Type toggle buttons in edit screen
+  const typeBtn = e.target.closest('.ex-type-btn');
+  if (typeBtn) {
+    exSettingsEditType = typeBtn.dataset.type;
+    document.querySelectorAll('.ex-type-btn').forEach(b => b.className = 'ex-type-btn');
+    typeBtn.classList.add(exSettingsEditType === 'compound' ? 'sel-compound' : 'sel-accessory');
+    return;
+  }
+});
+
+document.getElementById('ex-settings-close').addEventListener('click', closeExSettingsModal);
+
+document.getElementById('ex-edit-back').addEventListener('click', () => {
+  showExSettingsScreen('ex-settings-screen-list');
+  renderExSettingsList(document.getElementById('ex-settings-search').value.trim());
+});
+
+document.getElementById('ex-edit-save').addEventListener('click', () => {
+  if (!exSettingsEditName) return;
+  const repRangeRaw = (document.getElementById('ex-edit-rep-range')?.value || '').trim();
+  const repRange = repRangeRaw.replace(/\s+/g, '');
+  const overrides = store.getExOverrides();
+  const key = exSettingsEditName.toLowerCase();
+  if (!overrides[key]) overrides[key] = {};
+  overrides[key].type = exSettingsEditType;
+  overrides[key].repRange = repRange || null;
+  store.saveExOverrides(overrides);
+
+  // Also update custom exercise type in storage if it's custom
+  const customs = store.getCustomEx();
+  const ci = customs.findIndex(c => c.name.toLowerCase() === key);
+  if (ci >= 0) { customs[ci].type = exSettingsEditType; store.saveCustomEx(customs); }
+
+  showExSettingsScreen('ex-settings-screen-list');
+  renderExSettingsList(document.getElementById('ex-settings-search').value.trim());
+  toast('Saved!');
+});
+
+document.getElementById('ex-settings-search').addEventListener('input', e => {
+  renderExSettingsList(e.target.value.trim());
+});
+
+document.getElementById('workout-ex-settings-btn').addEventListener('click', openExSettingsModal);
 
 /* ════════════════════════════════════
    UTILS
