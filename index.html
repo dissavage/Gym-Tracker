@@ -660,6 +660,15 @@
     .ex-rep-input:focus { border-color: var(--accent); }
     .ex-rep-input::placeholder { color: var(--muted); font-weight: 400; font-size: 14px; }
     .ex-edit-hint { font-size: 11px; color: var(--muted); margin-top: 7px; line-height: 1.5; }
+    .ex-settings-row-days { font-size: 10px; color: var(--muted); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .ex-day-toggles { display: flex; flex-direction: column; gap: 6px; }
+    .ex-day-toggle { display: flex; align-items: center; gap: 10px; padding: 11px 14px; border: 1.5px solid var(--border); border-radius: 9px; background: var(--surf2); cursor: pointer; transition: all .15s; }
+    .ex-day-toggle.active { border-color: var(--accent); background: rgba(249,115,22,.08); }
+    .ex-day-check { width: 18px; height: 18px; border-radius: 5px; border: 1.5px solid var(--muted); display: flex; align-items: center; justify-content: center; font-size: 11px; flex-shrink: 0; transition: all .15s; }
+    .ex-day-toggle.active .ex-day-check { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .ex-day-label { font-size: 13px; font-weight: 600; flex: 1; min-width: 0; }
+    .ex-day-focus { font-size: 11px; color: var(--muted); margin-left: auto; flex-shrink: 0; }
+    .graph-tap-hint { font-size: 10px; font-weight: 400; color: var(--muted); margin-left: 6px; }
   </style>
 </head>
 <body>
@@ -694,8 +703,13 @@
 
     <div id="screen-day" class="screen active">
       <div class="scroll-content">
-        <div class="page-title">Today's Workout</div>
-        <div class="page-sub">Choose your training focus</div>
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px">
+          <div>
+            <div class="page-title">Today's Workout</div>
+            <div class="page-sub">Choose your training focus</div>
+          </div>
+          <button class="back-btn" id="day-ex-settings-btn" title="Exercise Library" style="font-size:16px;margin-top:6px;flex-shrink:0">&#9881;</button>
+        </div>
         <div class="day-grid" id="day-grid"></div>
       </div>
     </div>
@@ -707,7 +721,6 @@
           <div class="workout-top-day" id="workout-day-label"></div>
           <div class="workout-top-sub" id="workout-top-sub">Search above to add exercises</div>
         </div>
-        <button class="back-btn" id="workout-ex-settings-btn" title="Exercise Library" style="font-size:16px">&#9881;</button>
       </div>
 
       <div class="workout-search-sticky">
@@ -815,7 +828,7 @@
       </div>
       <div class="scroll-content" style="padding-top:14px" id="ex-detail-scroll">
         <div id="ex-detail-graph-wrap" class="graph-wrap" style="display:none;margin-bottom:16px">
-          <div class="graph-title">Weight Over Time</div>
+          <div class="graph-title">Weight Over Time <span class="graph-tap-hint">· tap point for reps chart</span></div>
           <div id="ex-detail-canvas-wrap" style="position:relative">
             <canvas id="ex-detail-graph"></canvas>
             <div id="ex-graph-tooltip" class="chart-tooltip"></div>
@@ -823,6 +836,27 @@
         </div>
         <div class="section-label" id="ex-history-label" style="display:none;margin-bottom:12px">Session History</div>
         <div id="ex-history-list"></div>
+      </div>
+    </div>
+
+    <!-- Screen: Reps Over Time -->
+    <div id="screen-progress-reps" class="screen">
+      <div class="workout-top-bar">
+        <button class="back-btn" id="back-from-reps">&#8592;</button>
+        <div class="workout-top-info">
+          <div class="workout-top-day" id="reps-ex-name" style="font-size:15px;white-space:normal;line-height:1.3"></div>
+          <div class="workout-top-sub" id="reps-ex-sub"></div>
+        </div>
+      </div>
+      <div class="scroll-content" style="padding-top:14px">
+        <div class="graph-wrap" style="margin-bottom:16px">
+          <div class="graph-title">Reps Over Time</div>
+          <div id="reps-canvas-wrap" style="position:relative">
+            <canvas id="reps-graph"></canvas>
+          </div>
+        </div>
+        <div class="section-label" style="margin-bottom:12px">Session History</div>
+        <div id="reps-history-list"></div>
       </div>
     </div>
 
@@ -1562,7 +1596,10 @@ function renderSearchResults(q) {
   const overrides = store.getExOverrides();
   const all = getAllExercises();
   const filtered = all.filter(e => {
-    if (overrides[e.name.toLowerCase()]?.hidden) return false;
+    const ov = overrides[e.name.toLowerCase()] || {};
+    if (ov.days != null) {
+      if (!session || !ov.days.includes(session.dayType)) return false;
+    }
     return e.name.toLowerCase().includes(ql) ||
       (e.muscleGroup && e.muscleGroup.toLowerCase().includes(ql));
   });
@@ -2913,20 +2950,25 @@ function drawExerciseGraph(data, overallPR) {
     }
   });
 
-  // Attach tooltip logic
+  // Attach interaction logic
   const tooltip = document.getElementById('ex-graph-tooltip');
   canvas._dotPositions = dotPositions;
   canvas._overallPR = overallPR;
   canvas._W = W;
 
-  function showTooltipAt(mx, my) {
+  function findNearestDot(mx, my) {
     const dots = canvas._dotPositions || [];
     let nearestDist = Infinity, nearest = null;
     for (const dot of dots) {
       const d = Math.sqrt((mx - dot.x)**2 + (my - dot.y)**2);
       if (d < nearestDist) { nearestDist = d; nearest = dot; }
     }
-    if (!nearest || nearestDist > 44) { tooltip.style.display = 'none'; return; }
+    return nearestDist <= 44 ? nearest : null;
+  }
+
+  function showTooltipAt(mx, my) {
+    const nearest = findNearestDot(mx, my);
+    if (!nearest) { tooltip.style.display = 'none'; return; }
     const d = nearest.data;
     const ds = new Date(d.date).toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
     let rc = 0;
@@ -2946,20 +2988,163 @@ function drawExerciseGraph(data, overallPR) {
     tooltip.style.transform = 'translateY(-100%)';
   }
 
+  // Desktop: hover shows tooltip; click navigates to reps screen
   canvas.onmousemove = e => {
     const r = canvas.getBoundingClientRect();
     showTooltipAt(e.clientX - r.left, e.clientY - r.top);
   };
   canvas.onmouseleave = () => { tooltip.style.display = 'none'; };
+  canvas.onclick = e => {
+    const r = canvas.getBoundingClientRect();
+    const nearest = findNearestDot(e.clientX - r.left, e.clientY - r.top);
+    if (nearest) { tooltip.style.display = 'none'; renderRepsScreen(); showProgressScreen('screen-progress-reps'); }
+  };
+
+  // Mobile: tap navigates directly to reps screen
   canvas.ontouchstart = e => {
     e.preventDefault();
     const r = canvas.getBoundingClientRect();
     const t = e.touches[0];
-    showTooltipAt(t.clientX - r.left, t.clientY - r.top);
+    const nearest = findNearestDot(t.clientX - r.left, t.clientY - r.top);
+    if (nearest) { renderRepsScreen(); showProgressScreen('screen-progress-reps'); }
   };
-  canvas.ontouchend = () => {
-    setTimeout(() => { tooltip.style.display = 'none'; }, 1800);
-  };
+  canvas.ontouchend = null;
+}
+
+/* ════════════════════════════════════
+   REPS OVER TIME SCREEN
+   ════════════════════════════════════ */
+document.getElementById('back-from-reps').addEventListener('click', () => {
+  showProgressScreen('screen-progress-exercise');
+});
+
+function renderRepsScreen() {
+  const name = progressCurrentEx;
+  document.getElementById('reps-ex-name').textContent = name;
+
+  const sessions = store.getSessions();
+  const exSessions = sessions
+    .filter(sess => sess.exercises.some(ex => ex.name.toLowerCase() === name.toLowerCase()))
+    .map(sess => ({
+      date: sess.date,
+      dayType: sess.dayType,
+      exercise: sess.exercises.find(ex => ex.name.toLowerCase() === name.toLowerCase())
+    }))
+    .sort((a, b) => new Date(a.date) - new Date(b.date));
+
+  document.getElementById('reps-ex-sub').textContent =
+    `${exSessions.length} session${exSessions.length !== 1 ? 's' : ''}`;
+
+  // Max reps across non-drop sets per session
+  const graphData = exSessions.map(s => {
+    const mainSets = s.exercise.sets.filter(set => !set.isDropSet);
+    const maxReps = Math.max(0, ...mainSets.map(set => parseInt(set.reps) || 0));
+    return { date: s.date, maxReps, sets: s.exercise.sets };
+  }).filter(d => d.maxReps > 0);
+
+  const overallMaxReps = graphData.length > 0 ? Math.max(...graphData.map(d => d.maxReps)) : 0;
+
+  // Session history list (newest first)
+  const list = document.getElementById('reps-history-list');
+  list.innerHTML = [...exSessions].reverse().map(s => {
+    const d = new Date(s.date);
+    const ds = d.toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric', year:'numeric' });
+    let rc = 0;
+    const badges = s.exercise.sets.map(set => {
+      const isDrop = set.isDropSet;
+      if (!isDrop) rc++;
+      const label = isDrop ? 'Drop' : `Set ${rc}`;
+      const r = parseInt(set.reps) || 0;
+      const isPR = !isDrop && r === overallMaxReps && overallMaxReps > 0;
+      return `<span class="sh-set-badge${isPR ? ' is-pr' : ''}${isDrop ? ' is-drop' : ''}">${label}: ${set.weight}lbs &times; ${set.reps}</span>`;
+    }).join('');
+    return `
+      <div class="session-history-card">
+        <div class="sh-date">${ds}</div>
+        <div class="sh-sets">${badges}</div>
+      </div>`;
+  }).join('');
+
+  requestAnimationFrame(() => drawRepsChart(graphData, overallMaxReps));
+}
+
+function drawRepsChart(data, overallMaxReps) {
+  const canvas = document.getElementById('reps-graph');
+  const canvasWrap = document.getElementById('reps-canvas-wrap');
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvasWrap.getBoundingClientRect();
+  const W = Math.floor(rect.width) || 300;
+  const H = 200;
+
+  canvas.style.width = W+'px'; canvas.style.height = H+'px';
+  canvas.width = W*dpr; canvas.height = H*dpr;
+
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+
+  ctx.fillStyle = '#1a1a1a'; ctx.fillRect(0,0,W,H);
+
+  if (data.length < 2) {
+    ctx.fillStyle = '#6b6b6b'; ctx.font = '13px -apple-system,sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText('Not enough data to plot', W/2, H/2);
+    return;
+  }
+
+  const padL=36, padR=10, padT=12, padB=34;
+  const plotW = W-padL-padR, plotH = H-padT-padB;
+
+  const reps = data.map(d => d.maxReps);
+  const rawMin = Math.min(...reps), rawMax = Math.max(...reps);
+  const span = rawMax - rawMin || 5;
+  const minR = Math.max(0, rawMin - span * .2), maxR = rawMax + span * .2;
+  const timestamps = data.map(d => new Date(d.date).getTime());
+  const minT = timestamps[0], maxT = timestamps[timestamps.length-1];
+  const tSpan = maxT - minT || 1;
+
+  const xOf = t => padL + (t-minT)/tSpan*plotW;
+  const yOf = r => padT + (1-(r-minR)/(maxR-minR))*plotH;
+
+  ctx.font = '11px -apple-system,sans-serif';
+  for (let i=0; i<=4; i++) {
+    const r = minR + (maxR-minR)*i/4;
+    const y = Math.round(yOf(r))+.5;
+    ctx.strokeStyle='#242424'; ctx.lineWidth=1;
+    ctx.beginPath(); ctx.moveTo(padL,y); ctx.lineTo(W-padR,y); ctx.stroke();
+    ctx.fillStyle='#6b6b6b'; ctx.textAlign='right';
+    ctx.fillText(Math.round(r), padL-4, y+4);
+  }
+
+  const maxLbls = Math.min(data.length, 5);
+  ctx.fillStyle='#6b6b6b'; ctx.font='10px -apple-system,sans-serif'; ctx.textAlign='center';
+  for (let i=0; i<maxLbls; i++) {
+    const idx = Math.round(i*(data.length-1)/Math.max(maxLbls-1,1));
+    const x = Math.round(xOf(timestamps[idx]));
+    ctx.fillText(new Date(data[idx].date).toLocaleDateString('en-US',{month:'short',day:'numeric'}), x, H-padB+16);
+  }
+
+  // Blue line for reps
+  ctx.strokeStyle='#60a5fa'; ctx.lineWidth=2; ctx.lineJoin='round'; ctx.lineCap='round';
+  ctx.setLineDash([]);
+  ctx.beginPath();
+  data.forEach((d,i) => {
+    const x=xOf(new Date(d.date).getTime()), y=yOf(d.maxReps);
+    i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+  });
+  ctx.stroke();
+
+  // Dots — green ring for PR sessions
+  data.forEach(d => {
+    const isPR = d.maxReps === overallMaxReps;
+    const x = xOf(new Date(d.date).getTime());
+    const y = yOf(d.maxReps);
+    if (isPR) {
+      ctx.fillStyle='#0f0f0f'; ctx.strokeStyle='#22c55e'; ctx.lineWidth=2;
+      ctx.beginPath(); ctx.arc(x,y,5,0,Math.PI*2); ctx.fill(); ctx.stroke();
+    } else {
+      ctx.fillStyle='#60a5fa';
+      ctx.beginPath(); ctx.arc(x,y,3.5,0,Math.PI*2); ctx.fill();
+    }
+  });
 }
 
 /* ════════════════════════════════════
@@ -3650,6 +3835,7 @@ function renderExSettingsList(q) {
     groups[g].push(ex);
   }
 
+  const split = store.getSplitConfig();
   const groupOrder = ['Chest','Shoulders','Back','Biceps','Triceps','Traps','Forearms','Quads','Hamstrings','Glutes','Calves','Abs / Core','Custom'];
   let html = '';
   for (const g of groupOrder) {
@@ -3657,16 +3843,21 @@ function renderExSettingsList(q) {
     html += `<div class="ex-settings-group-hdr">${escHtml(g)}</div>`;
     for (const ex of groups[g]) {
       const ov = overrides[ex.name.toLowerCase()] || {};
-      const isHidden = !!ov.hidden;
       const effectiveType = ov.type || ex.type;
       const repRange = ov.repRange || (effectiveType === 'compound' ? '6-8' : '8-15');
+      const days = ov.days;
+      const isHidden = Array.isArray(days) && days.length === 0;
+      let daysLabel;
+      if (days == null) daysLabel = 'All days';
+      else if (days.length === 0) daysLabel = 'Hidden from all days';
+      else daysLabel = days.map(d => d.split(' ')[0]).join(', ');
       html += `
         <div class="ex-settings-row${isHidden ? ' is-hidden' : ''}" data-name="${escHtml(ex.name)}">
           <div class="ex-settings-row-info" data-edit-name="${escHtml(ex.name)}">
             <div class="ex-settings-row-name">${escHtml(ex.name)}</div>
             <div class="ex-settings-row-sub">${escHtml(effectiveType === 'compound' ? 'Compound' : 'Accessory')} &middot; ${escHtml(repRange)} reps</div>
+            <div class="ex-settings-row-days">${escHtml(daysLabel)}</div>
           </div>
-          <button class="ex-vis-btn${isHidden ? '' : ' visible'}" data-vis-name="${escHtml(ex.name)}" title="${isHidden ? 'Hidden from search' : 'Visible in search'}">${isHidden ? '&#128683;' : '&#128065;'}</button>
           <span class="ex-edit-chevron" data-edit-name="${escHtml(ex.name)}">&#8250;</span>
         </div>`;
     }
@@ -3686,20 +3877,38 @@ function openExEdit(name) {
   exSettingsEditType = ov.type || baseType;
   const repRange = ov.repRange || '';
   const isCustom = ex && (ex.muscleGroup === 'Custom');
+  const split = store.getSplitConfig();
+  const assignedDays = ov.days; // null = all, [] = none, [...] = specific
+
+  const dayToggles = split.map(day => {
+    const isOn = assignedDays == null || assignedDays.includes(day.name);
+    const c = SPLIT_COLORS[day.color] || SPLIT_COLORS.orange;
+    return `
+      <div class="ex-day-toggle${isOn ? ' active' : ''}" data-day="${escHtml(day.name)}">
+        <div class="ex-day-check">${isOn ? '&#10003;' : ''}</div>
+        <span class="ex-day-label">${escHtml(day.name)}</span>
+        <span class="ex-day-focus" style="color:${c.border}">${escHtml(day.focus || '')}</span>
+      </div>`;
+  }).join('');
 
   document.getElementById('ex-edit-title').textContent = name;
   document.getElementById('ex-edit-body').innerHTML = `
     <div class="ex-edit-section">
       <div class="ex-edit-label">Exercise Type</div>
       <div class="ex-type-btns">
-        <button class="ex-type-btn${exSettingsEditType === 'compound' ? ' sel-compound' : ''}" id="ex-type-btn-compound" data-type="compound">Compound</button>
-        <button class="ex-type-btn${exSettingsEditType === 'accessory' ? ' sel-accessory' : ''}" id="ex-type-btn-accessory" data-type="accessory">Accessory</button>
+        <button class="ex-type-btn${exSettingsEditType === 'compound' ? ' sel-compound' : ''}" data-type="compound">Compound</button>
+        <button class="ex-type-btn${exSettingsEditType === 'accessory' ? ' sel-accessory' : ''}" data-type="accessory">Accessory</button>
       </div>
     </div>
     <div class="ex-edit-section">
       <div class="ex-edit-label">Rep Range</div>
       <input type="text" class="ex-rep-input" id="ex-edit-rep-range" placeholder="e.g. 6-8 or 10-15" value="${escHtml(repRange)}" inputmode="text" autocomplete="off">
       <div class="ex-edit-hint">Leave blank to use default (Compound: 6-8, Accessory: 8-15)</div>
+    </div>
+    <div class="ex-edit-section">
+      <div class="ex-edit-label">Appears in Workout Days</div>
+      <div class="ex-edit-hint" style="margin-top:0;margin-bottom:10px">Uncheck all to hide this exercise from search</div>
+      <div class="ex-day-toggles">${dayToggles}</div>
     </div>
     ${isCustom ? `
     <div class="ex-edit-section">
@@ -3712,19 +3921,6 @@ function openExEdit(name) {
 
 document.getElementById('ex-settings-modal').addEventListener('click', e => {
   if (e.target === document.getElementById('ex-settings-modal')) { closeExSettingsModal(); return; }
-
-  // Visibility toggle
-  const visBtn = e.target.closest('.ex-vis-btn');
-  if (visBtn) {
-    const name = visBtn.dataset.visName;
-    const overrides = store.getExOverrides();
-    const key = name.toLowerCase();
-    if (!overrides[key]) overrides[key] = {};
-    overrides[key].hidden = !overrides[key].hidden;
-    store.saveExOverrides(overrides);
-    renderExSettingsList(document.getElementById('ex-settings-search').value.trim());
-    return;
-  }
 
   // Edit exercise (click on info or chevron)
   const editTarget = e.target.closest('[data-edit-name]');
@@ -3753,6 +3949,15 @@ document.getElementById('ex-settings-modal').addEventListener('click', e => {
     typeBtn.classList.add(exSettingsEditType === 'compound' ? 'sel-compound' : 'sel-accessory');
     return;
   }
+
+  // Day toggle buttons in edit screen
+  const dayToggle = e.target.closest('.ex-day-toggle');
+  if (dayToggle) {
+    dayToggle.classList.toggle('active');
+    const check = dayToggle.querySelector('.ex-day-check');
+    check.innerHTML = dayToggle.classList.contains('active') ? '&#10003;' : '';
+    return;
+  }
 });
 
 document.getElementById('ex-settings-close').addEventListener('click', closeExSettingsModal);
@@ -3766,11 +3971,25 @@ document.getElementById('ex-edit-save').addEventListener('click', () => {
   if (!exSettingsEditName) return;
   const repRangeRaw = (document.getElementById('ex-edit-rep-range')?.value || '').trim();
   const repRange = repRangeRaw.replace(/\s+/g, '');
+
+  // Collect selected days
+  const allToggles = [...document.querySelectorAll('.ex-day-toggle')];
+  const split = store.getSplitConfig();
+  let selectedDays;
+  if (allToggles.length === 0 || allToggles.every(t => t.classList.contains('active'))) {
+    selectedDays = null; // all days = default, no override
+  } else {
+    selectedDays = allToggles
+      .filter(t => t.classList.contains('active'))
+      .map(t => t.dataset.day);
+  }
+
   const overrides = store.getExOverrides();
   const key = exSettingsEditName.toLowerCase();
   if (!overrides[key]) overrides[key] = {};
   overrides[key].type = exSettingsEditType;
   overrides[key].repRange = repRange || null;
+  overrides[key].days = selectedDays;
   store.saveExOverrides(overrides);
 
   // Also update custom exercise type in storage if it's custom
@@ -3787,7 +4006,7 @@ document.getElementById('ex-settings-search').addEventListener('input', e => {
   renderExSettingsList(e.target.value.trim());
 });
 
-document.getElementById('workout-ex-settings-btn').addEventListener('click', openExSettingsModal);
+document.getElementById('day-ex-settings-btn').addEventListener('click', openExSettingsModal);
 
 /* ════════════════════════════════════
    UTILS
