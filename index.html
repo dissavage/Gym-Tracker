@@ -849,8 +849,14 @@
         </div>
       </div>
       <div class="scroll-content" style="padding-top:14px">
+        <div id="reps-filter-wrap" style="display:none;margin-bottom:10px">
+          <div style="display:inline-flex;align-items:center;gap:6px;background:rgba(96,165,250,.15);border:1px solid var(--blue);color:var(--blue);border-radius:99px;padding:5px 12px;font-size:12px;font-weight:700">
+            <span id="reps-filter-label"></span>
+            <button id="reps-filter-clear" style="background:none;border:none;color:var(--blue);font-size:14px;cursor:pointer;padding:0;line-height:1;margin-left:2px">&#10005;</button>
+          </div>
+        </div>
         <div class="graph-wrap" style="margin-bottom:16px">
-          <div class="graph-title">Reps Over Time</div>
+          <div id="reps-graph-title" class="graph-title">Reps Over Time <span class="graph-tap-hint">· tap point to filter by weight</span></div>
           <div id="reps-canvas-wrap" style="position:relative">
             <canvas id="reps-graph"></canvas>
           </div>
@@ -3018,12 +3024,19 @@ document.getElementById('back-from-reps').addEventListener('click', () => {
   showProgressScreen('screen-progress-exercise');
 });
 
+let repsAllData = [];
+let repsAllPR = 0;
+let repsAllExSessions = [];
+
 function renderRepsScreen() {
   const name = progressCurrentEx;
   document.getElementById('reps-ex-name').textContent = name;
+  document.getElementById('reps-filter-wrap').style.display = 'none';
+  document.getElementById('reps-graph-title').innerHTML =
+    'Reps Over Time <span class="graph-tap-hint">&middot; tap point to filter by weight</span>';
 
   const sessions = store.getSessions();
-  const exSessions = sessions
+  repsAllExSessions = sessions
     .filter(sess => sess.exercises.some(ex => ex.name.toLowerCase() === name.toLowerCase()))
     .map(sess => ({
       date: sess.date,
@@ -3033,20 +3046,24 @@ function renderRepsScreen() {
     .sort((a, b) => new Date(a.date) - new Date(b.date));
 
   document.getElementById('reps-ex-sub').textContent =
-    `${exSessions.length} session${exSessions.length !== 1 ? 's' : ''}`;
+    `${repsAllExSessions.length} session${repsAllExSessions.length !== 1 ? 's' : ''}`;
 
-  // Max reps across non-drop sets per session
-  const graphData = exSessions.map(s => {
+  repsAllData = repsAllExSessions.map(s => {
     const mainSets = s.exercise.sets.filter(set => !set.isDropSet);
     const maxReps = Math.max(0, ...mainSets.map(set => parseInt(set.reps) || 0));
-    return { date: s.date, maxReps, sets: s.exercise.sets };
+    const maxWeight = Math.max(0, ...mainSets.map(set => parseFloat(set.weight) || 0));
+    return { date: s.date, maxReps, maxWeight, sets: s.exercise.sets };
   }).filter(d => d.maxReps > 0);
+  repsAllPR = repsAllData.length > 0 ? Math.max(...repsAllData.map(d => d.maxReps)) : 0;
 
-  const overallMaxReps = graphData.length > 0 ? Math.max(...graphData.map(d => d.maxReps)) : 0;
+  renderRepsHistoryList(repsAllExSessions, repsAllPR, null);
+  requestAnimationFrame(() => drawRepsChart(repsAllData, repsAllPR));
+}
 
-  // Session history list (newest first)
+function renderRepsHistoryList(sessions, prReps, filterWeight) {
   const list = document.getElementById('reps-history-list');
-  list.innerHTML = [...exSessions].reverse().map(s => {
+  if (!sessions.length) { list.innerHTML = ''; return; }
+  list.innerHTML = [...sessions].reverse().map(s => {
     const d = new Date(s.date);
     const ds = d.toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric', year:'numeric' });
     let rc = 0;
@@ -3055,8 +3072,11 @@ function renderRepsScreen() {
       if (!isDrop) rc++;
       const label = isDrop ? 'Drop' : `Set ${rc}`;
       const r = parseInt(set.reps) || 0;
-      const isPR = !isDrop && r === overallMaxReps && overallMaxReps > 0;
-      return `<span class="sh-set-badge${isPR ? ' is-pr' : ''}${isDrop ? ' is-drop' : ''}">${label}: ${set.weight}lbs &times; ${set.reps}</span>`;
+      const w = parseFloat(set.weight) || 0;
+      const matchesFilter = filterWeight == null || (!isDrop && w === filterWeight);
+      const isPR = matchesFilter && !isDrop && r === prReps && prReps > 0;
+      const dimmed = filterWeight != null && !isDrop && w !== filterWeight;
+      return `<span class="sh-set-badge${isPR ? ' is-pr' : ''}${isDrop ? ' is-drop' : ''}" style="${dimmed ? 'opacity:.3' : ''}">${label}: ${set.weight}lbs &times; ${set.reps}</span>`;
     }).join('');
     return `
       <div class="session-history-card">
@@ -3064,9 +3084,40 @@ function renderRepsScreen() {
         <div class="sh-sets">${badges}</div>
       </div>`;
   }).join('');
-
-  requestAnimationFrame(() => drawRepsChart(graphData, overallMaxReps));
 }
+
+function filterRepsByWeight(targetWeight) {
+  // Filter sessions that have at least one non-drop set at targetWeight
+  const filteredSessions = repsAllExSessions.filter(s =>
+    s.exercise.sets.some(set => !set.isDropSet && parseFloat(set.weight) === targetWeight)
+  );
+  const filteredData = filteredSessions.map(s => {
+    const matchSets = s.exercise.sets.filter(set => !set.isDropSet && parseFloat(set.weight) === targetWeight);
+    const maxReps = Math.max(0, ...matchSets.map(set => parseInt(set.reps) || 0));
+    return { date: s.date, maxReps, maxWeight: targetWeight, sets: s.exercise.sets };
+  }).filter(d => d.maxReps > 0);
+  const filteredPR = filteredData.length > 0 ? Math.max(...filteredData.map(d => d.maxReps)) : 0;
+
+  document.getElementById('reps-filter-wrap').style.display = 'block';
+  document.getElementById('reps-filter-label').textContent = `${targetWeight} lbs`;
+  document.getElementById('reps-graph-title').innerHTML =
+    `Reps at ${targetWeight} lbs <span class="graph-tap-hint">&middot; ${filteredSessions.length} session${filteredSessions.length !== 1 ? 's' : ''}</span>`;
+  document.getElementById('reps-ex-sub').textContent =
+    `Filtered: ${targetWeight}lbs · ${filteredSessions.length} session${filteredSessions.length !== 1 ? 's' : ''}`;
+
+  renderRepsHistoryList(filteredSessions, filteredPR, targetWeight);
+  drawRepsChart(filteredData, filteredPR);
+}
+
+document.getElementById('reps-filter-clear').addEventListener('click', () => {
+  document.getElementById('reps-filter-wrap').style.display = 'none';
+  document.getElementById('reps-graph-title').innerHTML =
+    'Reps Over Time <span class="graph-tap-hint">&middot; tap point to filter by weight</span>';
+  document.getElementById('reps-ex-sub').textContent =
+    `${repsAllExSessions.length} session${repsAllExSessions.length !== 1 ? 's' : ''}`;
+  renderRepsHistoryList(repsAllExSessions, repsAllPR, null);
+  drawRepsChart(repsAllData, repsAllPR);
+});
 
 function drawRepsChart(data, overallMaxReps) {
   const canvas = document.getElementById('reps-graph');
@@ -3081,12 +3132,11 @@ function drawRepsChart(data, overallMaxReps) {
 
   const ctx = canvas.getContext('2d');
   ctx.scale(dpr, dpr);
-
   ctx.fillStyle = '#1a1a1a'; ctx.fillRect(0,0,W,H);
 
   if (data.length < 2) {
     ctx.fillStyle = '#6b6b6b'; ctx.font = '13px -apple-system,sans-serif'; ctx.textAlign = 'center';
-    ctx.fillText('Not enough data to plot', W/2, H/2);
+    ctx.fillText(data.length === 0 ? 'No data at this weight' : 'Only 1 session — need more to plot', W/2, H/2);
     return;
   }
 
@@ -3122,7 +3172,6 @@ function drawRepsChart(data, overallMaxReps) {
     ctx.fillText(new Date(data[idx].date).toLocaleDateString('en-US',{month:'short',day:'numeric'}), x, H-padB+16);
   }
 
-  // Blue line for reps
   ctx.strokeStyle='#60a5fa'; ctx.lineWidth=2; ctx.lineJoin='round'; ctx.lineCap='round';
   ctx.setLineDash([]);
   ctx.beginPath();
@@ -3132,11 +3181,12 @@ function drawRepsChart(data, overallMaxReps) {
   });
   ctx.stroke();
 
-  // Dots — green ring for PR sessions
+  const dotPositions = [];
   data.forEach(d => {
     const isPR = d.maxReps === overallMaxReps;
     const x = xOf(new Date(d.date).getTime());
     const y = yOf(d.maxReps);
+    dotPositions.push({ x, y, data: d });
     if (isPR) {
       ctx.fillStyle='#0f0f0f'; ctx.strokeStyle='#22c55e'; ctx.lineWidth=2;
       ctx.beginPath(); ctx.arc(x,y,5,0,Math.PI*2); ctx.fill(); ctx.stroke();
@@ -3145,6 +3195,29 @@ function drawRepsChart(data, overallMaxReps) {
       ctx.beginPath(); ctx.arc(x,y,3.5,0,Math.PI*2); ctx.fill();
     }
   });
+
+  // Tap/click a dot to filter by weight
+  function findNearest(mx, my) {
+    let nearestDist = Infinity, nearest = null;
+    for (const dot of dotPositions) {
+      const d = Math.sqrt((mx-dot.x)**2 + (my-dot.y)**2);
+      if (d < nearestDist) { nearestDist = d; nearest = dot; }
+    }
+    return nearestDist <= 44 ? nearest : null;
+  }
+
+  canvas.ontouchstart = e => {
+    e.preventDefault();
+    const r = canvas.getBoundingClientRect();
+    const t = e.touches[0];
+    const nearest = findNearest(t.clientX - r.left, t.clientY - r.top);
+    if (nearest) filterRepsByWeight(nearest.data.maxWeight);
+  };
+  canvas.onclick = e => {
+    const r = canvas.getBoundingClientRect();
+    const nearest = findNearest(e.clientX - r.left, e.clientY - r.top);
+    if (nearest) filterRepsByWeight(nearest.data.maxWeight);
+  };
 }
 
 /* ════════════════════════════════════
@@ -3838,29 +3911,48 @@ function renderExSettingsList(q) {
   const split = store.getSplitConfig();
   const groupOrder = ['Chest','Shoulders','Back','Biceps','Triceps','Traps','Forearms','Quads','Hamstrings','Glutes','Calves','Abs / Core','Custom'];
   let html = '';
+  const hiddenRows = [];
+
+  function buildExRow(ex, isHidden) {
+    const ov = overrides[ex.name.toLowerCase()] || {};
+    const effectiveType = ov.type || ex.type;
+    const repRange = ov.repRange || (effectiveType === 'compound' ? '6-8' : '8-15');
+    const days = ov.days;
+    let daysLabel;
+    if (days == null) daysLabel = 'All days';
+    else if (days.length === 0) daysLabel = 'No days assigned';
+    else daysLabel = days.map(d => d.split(' ')[0]).join(', ');
+    return `
+      <div class="ex-settings-row${isHidden ? ' is-hidden' : ''}" data-name="${escHtml(ex.name)}">
+        <div class="ex-settings-row-info" data-edit-name="${escHtml(ex.name)}">
+          <div class="ex-settings-row-name">${escHtml(ex.name)}</div>
+          <div class="ex-settings-row-sub">${escHtml(effectiveType === 'compound' ? 'Compound' : 'Accessory')} &middot; ${escHtml(repRange)} reps</div>
+          <div class="ex-settings-row-days">${escHtml(daysLabel)}</div>
+        </div>
+        <span class="ex-edit-chevron" data-edit-name="${escHtml(ex.name)}">&#8250;</span>
+      </div>`;
+  }
+
   for (const g of groupOrder) {
     if (!groups[g] || groups[g].length === 0) continue;
-    html += `<div class="ex-settings-group-hdr">${escHtml(g)}</div>`;
-    for (const ex of groups[g]) {
-      const ov = overrides[ex.name.toLowerCase()] || {};
-      const effectiveType = ov.type || ex.type;
-      const repRange = ov.repRange || (effectiveType === 'compound' ? '6-8' : '8-15');
-      const days = ov.days;
-      const isHidden = Array.isArray(days) && days.length === 0;
-      let daysLabel;
-      if (days == null) daysLabel = 'All days';
-      else if (days.length === 0) daysLabel = 'Hidden from all days';
-      else daysLabel = days.map(d => d.split(' ')[0]).join(', ');
-      html += `
-        <div class="ex-settings-row${isHidden ? ' is-hidden' : ''}" data-name="${escHtml(ex.name)}">
-          <div class="ex-settings-row-info" data-edit-name="${escHtml(ex.name)}">
-            <div class="ex-settings-row-name">${escHtml(ex.name)}</div>
-            <div class="ex-settings-row-sub">${escHtml(effectiveType === 'compound' ? 'Compound' : 'Accessory')} &middot; ${escHtml(repRange)} reps</div>
-            <div class="ex-settings-row-days">${escHtml(daysLabel)}</div>
-          </div>
-          <span class="ex-edit-chevron" data-edit-name="${escHtml(ex.name)}">&#8250;</span>
-        </div>`;
+    const visibleInGroup = groups[g].filter(ex => {
+      const days = (overrides[ex.name.toLowerCase()] || {}).days;
+      return !(Array.isArray(days) && days.length === 0);
+    });
+    const hiddenInGroup = groups[g].filter(ex => {
+      const days = (overrides[ex.name.toLowerCase()] || {}).days;
+      return Array.isArray(days) && days.length === 0;
+    });
+    if (visibleInGroup.length > 0) {
+      html += `<div class="ex-settings-group-hdr">${escHtml(g)}</div>`;
+      visibleInGroup.forEach(ex => { html += buildExRow(ex, false); });
     }
+    hiddenInGroup.forEach(ex => hiddenRows.push(ex));
+  }
+
+  if (hiddenRows.length > 0) {
+    html += `<div class="ex-settings-group-hdr" style="color:var(--red);border-top:1px solid var(--border);margin-top:4px;padding-top:14px">HIDDEN</div>`;
+    hiddenRows.forEach(ex => { html += buildExRow(ex, true); });
   }
 
   if (!html) html = `<div style="padding:24px 16px;color:var(--muted);font-size:14px;text-align:center">No exercises found</div>`;
