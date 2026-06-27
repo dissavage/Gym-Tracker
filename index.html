@@ -626,8 +626,8 @@
     .ex-settings-search-wrap { padding: 12px 16px 0; flex-shrink: 0; }
     .ex-settings-list { flex: 1; overflow-y: auto; }
     .ex-settings-list::-webkit-scrollbar { display: none; }
-    .ex-settings-group-hdr { font-size: 10px; font-weight: 700; letter-spacing: .8px; text-transform: uppercase; color: var(--muted); padding: 10px 16px 4px; background: var(--bg); display: flex; align-items: center; justify-content: space-between; cursor: pointer; user-select: none; -webkit-user-select: none; }
-    .ex-group-chevron { font-size: 16px; font-weight: 400; letter-spacing: 0; text-transform: none; transition: transform .2s; line-height: 1; }
+    .ex-settings-group-hdr { font-size: 13px; font-weight: 700; letter-spacing: .4px; text-transform: uppercase; color: var(--muted); padding: 12px 16px 6px; background: var(--bg); display: flex; align-items: center; justify-content: space-between; cursor: pointer; user-select: none; -webkit-user-select: none; }
+    .ex-group-chevron { font-size: 20px; font-weight: 400; letter-spacing: 0; text-transform: none; transition: transform .2s; line-height: 1; }
     .ex-settings-row {
       display: flex; align-items: center; padding: 11px 16px; gap: 10px;
       border-bottom: 1px solid var(--border); transition: background .15s;
@@ -660,6 +660,7 @@
     }
     .ex-rep-input:focus { border-color: var(--accent); }
     .ex-rep-input::placeholder { color: var(--muted); font-weight: 400; font-size: 14px; }
+    select.ex-rep-input { padding-top: 14px; padding-bottom: 14px; font-size: 15px; color: var(--text); }
     .ex-edit-hint { font-size: 11px; color: var(--muted); margin-top: 7px; line-height: 1.5; }
     .ex-settings-row-days { font-size: 10px; color: var(--muted); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .ex-day-toggles { display: flex; flex-direction: column; gap: 6px; }
@@ -4151,8 +4152,13 @@ function renderExSettingsList(q) {
   }
 
   if (hiddenRows.length > 0) {
-    html += `<div class="ex-settings-group-hdr" style="color:var(--red);border-top:1px solid var(--border);margin-top:4px;padding-top:14px">HIDDEN</div>`;
-    hiddenRows.forEach(ex => { html += buildExRow(ex, true); });
+    const hiddenKey = '__hidden__';
+    const isHiddenCollapsed = collapsedGroups.has(hiddenKey) && !ql;
+    html += `<div class="ex-settings-group-hdr" data-group-toggle="${hiddenKey}" style="color:var(--red);border-top:1px solid var(--border);margin-top:4px;padding-top:14px">
+      <span>Hidden <span style="font-weight:400;opacity:.6">(${hiddenRows.length})</span></span>
+      <span class="ex-group-chevron" style="transform:rotate(${isHiddenCollapsed ? '0' : '90'}deg)">&#8250;</span>
+    </div>`;
+    if (!isHiddenCollapsed) hiddenRows.forEach(ex => { html += buildExRow(ex, true); });
   }
 
   if (!html) html = `<div style="padding:24px 16px;color:var(--muted);font-size:14px;text-align:center">No exercises found</div>`;
