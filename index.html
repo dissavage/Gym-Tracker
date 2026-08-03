@@ -469,6 +469,19 @@
     .progress-nav-svg { width: 1em; height: 1em; display: block; overflow: visible; }
     @keyframes progress-line-draw { to { stroke-dashoffset: 0; } }
 
+    /* ── TRACK NAV ICON ── */
+    .track-nav-svg { width: 1em; height: 1em; display: block; }
+    @keyframes track-squat-head {
+      0%, 5%      { cy: 4; }
+      40%, 60%    { cy: 7; }
+      95%, 100%   { cy: 4; }
+    }
+    @keyframes track-squat-body {
+      0%, 5%    { d: path("M10,6 L10,13 M7,8 L5,12 M13,8 L15,12 M10,13 L7,16 L7,19 M10,13 L13,16 L13,19"); }
+      40%, 60%  { d: path("M10,9 L10,14 M8,10 L5,13 M12,10 L15,13 M10,14 L6,17 L5,19 M10,14 L14,17 L15,19"); }
+      95%, 100% { d: path("M10,6 L10,13 M7,8 L5,12 M13,8 L15,12 M10,13 L7,16 L7,19 M10,13 L13,16 L13,19"); }
+    }
+
     /* ── HOME TAB ── */
     .home-greeting { font-size: 24px; font-weight: 800; margin-bottom: 2px; }
     .home-greeting-sub { font-size: 13px; color: var(--muted); margin-bottom: 20px; }
@@ -953,7 +966,13 @@
 <nav>
   <div class="nav-side">
     <button class="nav-btn" data-tab="track" id="nav-track">
-      <span class="nav-icon">&#127947;</span><span>Track</span>
+      <span class="nav-icon">
+        <svg class="track-nav-svg" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+          <circle id="track-nav-head" cx="10" cy="4" r="2" fill="currentColor"/>
+          <path id="track-nav-body" d="M10,6 L10,13 M7,8 L5,12 M13,8 L15,12 M10,13 L7,16 L7,19 M10,13 L13,16 L13,19"
+            stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </span><span>Track</span>
     </button>
     <button class="nav-btn" data-tab="diet" id="nav-diet">
       <span class="nav-icon">&#127828;</span><span>Diet</span>
@@ -1527,6 +1546,7 @@ document.querySelectorAll('.nav-btn').forEach(btn => {
       const draft = store.getDraft();
       if (draft && draft.exercises && draft.exercises.length > 0) showScreen('screen-workout');
       else showScreen('screen-day');
+      animateTrackNavSquat();
     }
     updateFinishBar();
   });
@@ -1546,6 +1566,18 @@ function animateProgressNavLine() {
       line.style.animation = 'progress-line-draw 0.7s ease-out forwards';
     });
   });
+}
+
+function animateTrackNavSquat() {
+  const head = document.getElementById('track-nav-head');
+  const body = document.getElementById('track-nav-body');
+  if (!head || !body) return;
+  head.style.animation = 'none';
+  body.style.animation = 'none';
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    head.style.animation = 'track-squat-head 1.4s ease-in-out forwards';
+    body.style.animation = 'track-squat-body 1.4s ease-in-out forwards';
+  }));
 }
 
 /* ════════════════════════════════════
