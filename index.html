@@ -52,7 +52,16 @@
     .day-card {
       background: var(--surf); border: 1px solid var(--border); border-left-width: 3px;
       border-radius: 12px; padding: 16px 18px; cursor: pointer; transition: background .18s;
+      position: relative;
     }
+    .day-card-discard {
+      position: absolute; top: 12px; right: 12px;
+      background: var(--red); border: none; color: #fff;
+      width: 26px; height: 26px; border-radius: 50%; cursor: pointer;
+      font-size: 13px; display: flex; align-items: center; justify-content: center;
+      transition: opacity .15s; flex-shrink: 0;
+    }
+    .day-card-discard:active { opacity: .75; }
     .day-card:active { background: var(--surf2); }
     .day-card.push  { border-left-color: var(--accent); }
     .day-card.quad  { border-left-color: var(--green); }
@@ -1523,11 +1532,20 @@ function renderDayCards() {
         <div class="day-card-name">${escHtml(day.name)}${hasDraft ? '<span class="draft-pill">In Progress</span>' : ''}</div>
         <div class="day-card-muscles">${escHtml(day.muscles)}</div>
         <span class="day-card-tag" style="background:${c.tag_bg};color:${c.tag_fg}">${escHtml(day.focus)}</span>
+        ${hasDraft ? `<button class="day-card-discard" data-discard-day="${escHtml(day.name)}" title="Discard workout">&#10005;</button>` : ''}
       </div>`;
   }).join('');
 }
 
 document.getElementById('day-grid').addEventListener('click', e => {
+  const discardBtn = e.target.closest('.day-card-discard');
+  if (discardBtn) {
+    e.stopPropagation();
+    session = null;
+    store.clearDraft();
+    renderDayCards();
+    return;
+  }
   const card = e.target.closest('.day-card');
   if (!card) return;
   const day = card.dataset.day;
