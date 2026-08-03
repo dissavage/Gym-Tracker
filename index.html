@@ -462,6 +462,9 @@
     nav { overflow-x: auto; }
     nav::-webkit-scrollbar { display: none; }
     .nav-btn { min-width: 52px; }
+    .nav-side { display: flex; flex: 1; }
+    nav > #nav-home { flex: 0 0 auto; min-width: 68px; font-size: 12px; }
+    nav > #nav-home .nav-icon { font-size: 24px; }
 
     /* ── HOME TAB ── */
     .home-greeting { font-size: 24px; font-weight: 800; margin-bottom: 2px; }
@@ -945,24 +948,28 @@
 </main>
 
 <nav>
+  <div class="nav-side">
+    <button class="nav-btn" data-tab="track" id="nav-track">
+      <span class="nav-icon">&#127947;</span><span>Track</span>
+    </button>
+    <button class="nav-btn" data-tab="diet" id="nav-diet">
+      <span class="nav-icon">&#127828;</span><span>Diet</span>
+    </button>
+    <button class="nav-btn" data-tab="weight" id="nav-weight">
+      <span class="nav-icon">&#9878;</span><span>Weight</span>
+    </button>
+  </div>
   <button class="nav-btn active" data-tab="home" id="nav-home">
     <span class="nav-icon">&#127968;</span><span>Home</span>
   </button>
-  <button class="nav-btn" data-tab="track" id="nav-track">
-    <span class="nav-icon">&#127947;</span><span>Track</span>
-  </button>
-  <button class="nav-btn" data-tab="diet" id="nav-diet">
-    <span class="nav-icon">&#127828;</span><span>Diet</span>
-  </button>
-  <button class="nav-btn" data-tab="weight" id="nav-weight">
-    <span class="nav-icon">&#9878;</span><span>Weight</span>
-  </button>
-  <button class="nav-btn" data-tab="progress" id="nav-progress">
-    <span class="nav-icon">&#128200;</span><span>Progress</span>
-  </button>
-  <button class="nav-btn" data-tab="history" id="nav-history">
-    <span class="nav-icon">&#128203;</span><span>History</span>
-  </button>
+  <div class="nav-side">
+    <button class="nav-btn" data-tab="progress" id="nav-progress">
+      <span class="nav-icon">&#128200;</span><span>Progress</span>
+    </button>
+    <button class="nav-btn" data-tab="history" id="nav-history">
+      <span class="nav-icon">&#128203;</span><span>History</span>
+    </button>
+  </div>
 </nav>
 
 <div class="finish-bar" id="finish-bar">
