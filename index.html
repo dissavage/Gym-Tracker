@@ -483,6 +483,13 @@
     .home-wt-row { display: flex; align-items: baseline; gap: 6px; }
     .home-wt-val { font-size: 28px; font-weight: 800; letter-spacing: -.5px; }
     .home-wt-unit { font-size: 14px; color: var(--muted); }
+    .home-wt-quick-row { display: flex; align-items: center; gap: 8px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
+    .home-wt-quick-row--first { margin-top: 0; padding-top: 0; border-top: none; }
+    .home-wt-quick-input { flex: 1; min-width: 0; background: var(--surf2); border: 1px solid var(--border); border-radius: 10px; padding: 8px 10px; font-size: 16px; font-weight: 700; color: var(--text); outline: none; -webkit-appearance: none; appearance: none; }
+    .home-wt-quick-input:focus { border-color: var(--accent); }
+    .home-wt-quick-unit { font-size: 13px; color: var(--muted); flex-shrink: 0; }
+    .home-wt-quick-btn { background: var(--accent); color: #fff; border: none; border-radius: 10px; padding: 8px 18px; font-size: 14px; font-weight: 700; cursor: pointer; flex-shrink: 0; }
+    .home-wt-quick-btn:active { opacity: .85; }
     .home-wx-day  { font-size: 15px; font-weight: 700; }
     .home-wx-date { font-size: 12px; color: var(--muted); margin-top: 2px; }
     .home-wx-exs  { font-size: 12px; color: var(--muted); margin-top: 6px; line-height: 1.5; }
@@ -3416,8 +3423,14 @@ function renderHomeTab() {
 
   const weights = store.getWeights();
   const wEl = document.getElementById('home-weight-content');
+  const _quickRow = (first) => `
+    <div class="home-wt-quick-row${first ? ' home-wt-quick-row--first' : ''}">
+      <input id="home-wt-input" type="number" class="home-wt-quick-input" placeholder="0.0" step="0.1" min="0" inputmode="decimal">
+      <span class="home-wt-quick-unit">lbs</span>
+      <button id="home-log-weight-btn" class="home-wt-quick-btn">Log</button>
+    </div>`;
   if (weights.length === 0) {
-    wEl.innerHTML = `<div class="home-empty">No weight logged yet</div>`;
+    wEl.innerHTML = _quickRow(true);
   } else {
     const sorted = [...weights].sort((a,b) => new Date(a.date)-new Date(b.date));
     const last = sorted[sorted.length-1];
@@ -3427,7 +3440,8 @@ function renderHomeTab() {
         <span class="home-wt-val">${last.weight}</span>
         <span class="home-wt-unit">lbs</span>
       </div>
-      <div style="font-size:12px;color:var(--muted);margin-top:4px">${ds}</div>`;
+      <div style="font-size:12px;color:var(--muted);margin-top:4px">${ds}</div>
+      ${_quickRow(false)}`;
   }
 
   const sessions = store.getSessions();
@@ -3484,6 +3498,25 @@ function renderDietTab() {
   }
   renderQuickLogSection();
 }
+
+document.getElementById('tab-home').addEventListener('click', e => {
+  if (!e.target.closest('#home-log-weight-btn')) return;
+  const input = document.getElementById('home-wt-input');
+  const val = parseFloat(input.value);
+  if (isNaN(val) || val <= 0) { toast('Enter a valid weight', false); return; }
+  const log = store.getWeights();
+  log.push({ date: new Date().toISOString(), weight: val });
+  store.saveWeights(log);
+  input.value = '';
+  toast('Weight logged!');
+  renderHomeTab();
+});
+
+document.getElementById('tab-home').addEventListener('keydown', e => {
+  if (e.key === 'Enter' && e.target.id === 'home-wt-input') {
+    document.getElementById('home-log-weight-btn')?.click();
+  }
+});
 
 document.getElementById('home-settings-btn').addEventListener('click', () => {
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
