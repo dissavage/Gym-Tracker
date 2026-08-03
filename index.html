@@ -194,7 +194,7 @@
     /* Sets */
     .sets-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 8px; }
     .set-row { position: relative; overflow: hidden; border-radius: 8px; }
-    .set-row-inner { display: flex; align-items: center; gap: 6px; background: var(--bg); position: relative; z-index: 1; transition: transform .25s cubic-bezier(.25,.46,.45,.94); }
+    .set-row-inner { display: flex; align-items: center; gap: 6px; background: var(--bg); position: relative; transition: transform .25s cubic-bezier(.25,.46,.45,.94); }
     .set-num { font-size: 12px; font-weight: 700; color: var(--muted); min-width: 36px; flex-shrink: 0; }
     .set-num.drop-label { color: var(--purple); min-width: 36px; }
     .set-inputs { display: flex; align-items: center; gap: 5px; flex: 1; min-width: 0; }
@@ -210,7 +210,7 @@
     .set-sep { color: var(--muted); font-size: 14px; font-weight: 600; flex-shrink: 0; }
     .drop-set-row { margin-left: 16px; }
     .drop-set-row .set-row-inner { border-left: 2px solid rgba(192,132,252,.45); padding-left: 10px; }
-    .swipe-del-reveal { position: absolute; right: 0; top: 0; bottom: 0; width: 72px; background: var(--red); display: flex; align-items: center; justify-content: center; z-index: 0; }
+    .swipe-del-reveal { position: absolute; right: 0; top: 0; bottom: 0; width: 72px; background: var(--red); display: flex; align-items: center; justify-content: center; }
     .swipe-del-btn { background: none; border: none; color: #fff; font-size: 12px; font-weight: 800; cursor: pointer; width: 100%; height: 100%; letter-spacing: .3px; }
     .del-set-btn {
       background: none; border: none; color: var(--muted); cursor: pointer;
@@ -1774,6 +1774,7 @@ function buildExCardHtml(ex, idx) {
     const numClass = s.isDropSet ? 'set-num drop-label' : 'set-num';
     return `
       <div class="set-row${s.isDropSet ? ' drop-set-row' : ''}" data-set-idx="${sIdx}" data-ex-idx="${idx}">
+        ${ex.sets.length > 1 ? `<div class="swipe-del-reveal"><button class="swipe-del-btn" data-ex-idx="${idx}" data-set-idx="${sIdx}">Delete</button></div>` : ''}
         <div class="set-row-inner">
           <span class="${numClass}">${label}</span>
           <div class="set-inputs">
@@ -1785,7 +1786,6 @@ function buildExCardHtml(ex, idx) {
             <span class="set-timestamp" id="ts-${idx}-${sIdx}">${s.repTimestamp ? formatTimestamp(s.repTimestamp) : ''}</span>
           </div>
         </div>
-        ${ex.sets.length > 1 ? `<div class="swipe-del-reveal"><button class="swipe-del-btn" data-ex-idx="${idx}" data-set-idx="${sIdx}">Delete</button></div>` : ''}
       </div>`;
   }).join('');
 
