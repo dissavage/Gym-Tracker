@@ -1873,6 +1873,8 @@ document.getElementById('workout-exercises').addEventListener('click', e => {
   const delExBtn = e.target.closest('.del-ex-btn');
   if (delExBtn) {
     const idx = parseInt(delExBtn.dataset.exIdx);
+    const exName = session.exercises[idx]?.name || 'this exercise';
+    if (!confirm(`Remove ${exName} and all its sets?`)) return;
     session.exercises.splice(idx, 1);
     store.saveDraft(session);
     renderWorkoutExercises();
