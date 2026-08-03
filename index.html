@@ -202,7 +202,7 @@
 
     /* Sets */
     .sets-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 8px; }
-    .set-row { position: relative; overflow: hidden; border-radius: 8px; }
+    .set-row { position: relative; overflow: hidden; border-radius: 8px; touch-action: pan-y; }
     .set-row-inner { display: flex; align-items: center; gap: 6px; background: var(--bg); position: relative; transition: transform .25s cubic-bezier(.25,.46,.45,.94); }
     .set-num { font-size: 12px; font-weight: 700; color: var(--muted); min-width: 36px; flex-shrink: 0; }
     .set-num.drop-label { color: var(--purple); min-width: 36px; }
