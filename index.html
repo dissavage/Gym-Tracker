@@ -465,6 +465,9 @@
     .nav-side { display: flex; flex: 1; }
     nav > #nav-home { flex: 0 0 auto; min-width: 68px; font-size: 12px; }
     nav > #nav-home .nav-icon { font-size: 24px; }
+    /* ── PROGRESS NAV ICON ── */
+    .progress-nav-svg { width: 1em; height: 1em; display: block; overflow: visible; }
+    @keyframes progress-line-draw { to { stroke-dashoffset: 0; } }
 
     /* ── HOME TAB ── */
     .home-greeting { font-size: 24px; font-weight: 800; margin-bottom: 2px; }
@@ -964,7 +967,11 @@
   </button>
   <div class="nav-side">
     <button class="nav-btn" data-tab="progress" id="nav-progress">
-      <span class="nav-icon">&#128200;</span><span>Progress</span>
+      <span class="nav-icon">
+        <svg class="progress-nav-svg" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <polyline id="progress-nav-line" points="1,17 5,12 9,15 13,7 17,10 19,3"/>
+        </svg>
+      </span><span>Progress</span>
     </button>
     <button class="nav-btn" data-tab="history" id="nav-history">
       <span class="nav-icon">&#128203;</span><span>History</span>
@@ -1514,7 +1521,7 @@ document.querySelectorAll('.nav-btn').forEach(btn => {
     if (tab === 'settings') renderSettingsTab();
     if (tab === 'history')  renderHistory();
     if (tab === 'weight')   renderWeightTab();
-    if (tab === 'progress') renderProgressTab();
+    if (tab === 'progress') { renderProgressTab(); animateProgressNavLine(); }
     if (tab === 'track') {
       const draft = store.getDraft();
       if (draft && draft.exercises && draft.exercises.length > 0) showScreen('screen-workout');
@@ -1523,6 +1530,22 @@ document.querySelectorAll('.nav-btn').forEach(btn => {
     updateFinishBar();
   });
 });
+
+function animateProgressNavLine() {
+  const line = document.getElementById('progress-nav-line');
+  if (!line) return;
+  line.style.animation = 'none';
+  line.style.strokeDasharray = '';
+  line.style.strokeDashoffset = '';
+  requestAnimationFrame(() => {
+    const len = Math.ceil(line.getTotalLength());
+    line.style.strokeDasharray = len;
+    line.style.strokeDashoffset = len;
+    requestAnimationFrame(() => {
+      line.style.animation = 'progress-line-draw 0.7s ease-out forwards';
+    });
+  });
+}
 
 /* ════════════════════════════════════
    DAY SELECTION
