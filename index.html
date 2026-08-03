@@ -1541,6 +1541,7 @@ document.getElementById('day-grid').addEventListener('click', e => {
   const discardBtn = e.target.closest('.day-card-discard');
   if (discardBtn) {
     e.stopPropagation();
+    if (!confirm('Discard this workout? All logged sets will be lost.')) return;
     session = null;
     store.clearDraft();
     renderDayCards();
