@@ -397,6 +397,11 @@
     .graph-title { font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 10px; }
     .graph-canvas-wrap { width: 100%; }
     canvas#weight-graph { display: block; }
+    .weight-range-select {
+      background: var(--surf2); border: 1px solid var(--border); color: var(--text);
+      border-radius: 8px; padding: 5px 10px; font-size: 12px; font-weight: 700;
+      outline: none; cursor: pointer; color-scheme: dark; flex-shrink: 0;
+    }
     .graph-legend { display: flex; gap: 16px; margin-top: 10px; padding-left: 4px; }
     .legend-item { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--muted); }
     .legend-line { width: 18px; height: 2px; border-radius: 1px; }
@@ -775,7 +780,15 @@
       </div>
       <div id="weight-graph-wrap" style="display:none">
         <div class="graph-wrap">
-          <div class="graph-title">Progress</div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+            <div class="graph-title" style="margin-bottom:0">Progress</div>
+            <select id="weight-range-select" class="weight-range-select">
+              <option value="1m">1 Month</option>
+              <option value="3m">3 Months</option>
+              <option value="6m">6 Months</option>
+              <option value="all" selected>All Time</option>
+            </select>
+          </div>
           <div class="graph-canvas-wrap" id="graph-canvas-wrap"><canvas id="weight-graph"></canvas></div>
           <div class="graph-legend">
             <div class="legend-item"><div class="legend-line" style="background:var(--accent)"></div>Actual</div>
@@ -2496,6 +2509,11 @@ function renderWeightTab() {
   requestAnimationFrame(() => drawWeightGraph());
 }
 
+document.getElementById('weight-range-select').addEventListener('change', function() {
+  weightGraphRange = this.value;
+  requestAnimationFrame(() => drawWeightGraph());
+});
+
 document.getElementById('log-weight-btn').addEventListener('click', () => {
   const input = document.getElementById('weight-input');
   const val   = parseFloat(input.value);
@@ -2617,6 +2635,8 @@ function renderWeightList() {
   }).join('');
 }
 
+let weightGraphRange = 'all';
+
 function drawWeightGraph() {
   const log  = store.getWeights();
   const wrap = document.getElementById('weight-graph-wrap');
@@ -2624,7 +2644,26 @@ function drawWeightGraph() {
   const canvasWrap = document.getElementById('graph-canvas-wrap');
   if (log.length < 2) { wrap.style.display = 'none'; return; }
   wrap.style.display = 'block';
-  const sorted = [...log].sort((a,b) => new Date(a.date) - new Date(b.date));
+  let sorted = [...log].sort((a,b) => new Date(a.date) - new Date(b.date));
+  if (weightGraphRange !== 'all') {
+    const months = weightGraphRange === '1m' ? 1 : weightGraphRange === '3m' ? 3 : 6;
+    const cutoff = new Date();
+    cutoff.setMonth(cutoff.getMonth() - months);
+    sorted = sorted.filter(e => new Date(e.date) >= cutoff);
+  }
+  if (sorted.length < 2) {
+    const ctx = canvas.getContext('2d');
+    const dpr = window.devicePixelRatio || 1;
+    const rect = canvasWrap.getBoundingClientRect();
+    const W = Math.floor(rect.width), H = 220;
+    canvas.style.width = W+'px'; canvas.style.height = H+'px';
+    canvas.width = W*dpr; canvas.height = H*dpr;
+    ctx.scale(dpr, dpr);
+    ctx.fillStyle = '#1a1a1a'; ctx.fillRect(0,0,W,H);
+    ctx.fillStyle = '#6b6b6b'; ctx.font = '13px -apple-system,sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText('No data for this timeframe', W/2, H/2);
+    return;
+  }
   const weekMs = 7 * 24 * 60 * 60 * 1000;
   const avgLine = sorted.map((entry, idx) => {
     const t = new Date(entry.date).getTime();
