@@ -1874,7 +1874,8 @@ document.getElementById('workout-exercises').addEventListener('click', e => {
   if (delExBtn) {
     const idx = parseInt(delExBtn.dataset.exIdx);
     const exName = session.exercises[idx]?.name || 'this exercise';
-    if (!confirm(`Remove ${exName} and all its sets?`)) return;
+    const hasValues = session.exercises[idx]?.sets.some(s => s.weight !== '' || s.reps !== '');
+    if (hasValues && !confirm(`Remove ${exName} and all its sets?`)) return;
     session.exercises.splice(idx, 1);
     store.saveDraft(session);
     renderWorkoutExercises();
