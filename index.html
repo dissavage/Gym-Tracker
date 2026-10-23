@@ -944,6 +944,18 @@
         <button class="add-day-btn" id="add-custom-ex-btn">+ Add Exercise</button>
       </div>
       <div class="settings-section">
+        <div class="settings-section-hdr">Move to Health Log</div>
+        <div class="settings-card">
+          <div class="settings-row">
+            <div>
+              <div class="settings-row-lbl">Export data for Health Log</div>
+              <div class="settings-row-sub">Saves a copy of everything to a file. Nothing in this app is changed.</div>
+            </div>
+          </div>
+        </div>
+        <button class="add-day-btn" id="export-healthlog-btn">Export for Health Log</button>
+      </div>
+      <div class="settings-section">
         <div class="settings-section-hdr">Coming Soon</div>
         <div class="settings-card">
           <div class="settings-soon">Color customization and more coming soon</div>
@@ -4441,6 +4453,38 @@ document.getElementById('ex-settings-search').addEventListener('input', e => {
 });
 
 document.getElementById('day-ex-settings-btn').addEventListener('click', openExSettingsModal);
+
+/* ════════════════════════════════════
+   EXPORT FOR HEALTH LOG (read-only: copies every gym_* key, changes nothing)
+   ════════════════════════════════════ */
+document.getElementById('export-healthlog-btn').addEventListener('click', async () => {
+  const keys = {};
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i);
+    if (k.startsWith('gym_')) keys[k] = localStorage.getItem(k);
+  }
+  const data = { app: 'gym-tracker-legacy', exportedAt: new Date().toISOString(), keys };
+  const name = `gym-tracker-export-${new Date().toISOString().slice(0, 10)}.json`;
+  const file = new File([JSON.stringify(data)], name, { type: 'application/json' });
+  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    try {
+      await navigator.share({ files: [file], title: name });
+      toast('Exported!');
+      return;
+    } catch (e) {
+      if (e.name === 'AbortError') return;
+    }
+  }
+  const url = URL.createObjectURL(file);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
+  toast('Exported!');
+});
 
 /* ════════════════════════════════════
    UTILS
